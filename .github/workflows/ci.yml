@@ -72,7 +72,7 @@ jobs:
       - run: flutter pub get
       - run: flutter build apk --release
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: budget-app-android
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -98,7 +98,7 @@ jobs:
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath budget-app-windows.zip
         shell: pwsh
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: budget-app-windows
           path: budget-app-windows.zip
@@ -115,7 +115,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev libfuse2
+            libgtk-3-dev liblzma-dev libstdc++-12-dev
 
       - uses: subosito/flutter-action@v2
         with:
@@ -128,6 +128,7 @@ jobs:
 
       - name: Package AppImage
         run: |
+          set -euo pipefail
           APPDIR=build/AppDir
           mkdir -p "$APPDIR/usr/bin"
           cp -r build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
@@ -141,9 +142,8 @@ jobs:
           Categories=Office;Finance;
           DESKTOP
 
-          # appimagetool requires an icon; placeholder until branding lands.
-          cp linux/runner/resources/*.png "$APPDIR/budget_app.png" 2>/dev/null \
-            || convert -size 256x256 xc:'#8FB996' "$APPDIR/budget_app.png"
+          # appimagetool requires an icon next to the .desktop file.
+          cp linux/runner/resources/budget_app.png "$APPDIR/budget_app.png"
 
           cat > "$APPDIR/AppRun" <<'APPRUN'
           #!/bin/sh
@@ -154,9 +154,11 @@ jobs:
 
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage "$APPDIR" budget-app-x86_64.AppImage
+          # --appimage-extract-and-run: runners have no FUSE to mount the tool.
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
+            "$APPDIR" budget-app-x86_64.AppImage
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: budget-app-linux
           path: budget-app-x86_64.AppImage
