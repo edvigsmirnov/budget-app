@@ -18,8 +18,17 @@ jobs:
   analyze:
     name: Analyze and test
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+
+      # Semantic half only; the build number comes from github.run_number.
+      - name: Read version from pubspec
+        id: version
+        run: |
+          echo "version=$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)" \
+            >> "$GITHUB_OUTPUT"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -55,6 +64,11 @@ jobs:
     name: Android APK
     needs: analyze
     runs-on: ubuntu-latest
+    env:
+      # versionName and versionCode. run_number only ever increases, which is
+      # what Android requires to install one build over another.
+      BUILD_NAME: ${{ needs.analyze.outputs.version }}
+      BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v5
 
@@ -70,16 +84,20 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter build apk --release
+      - run: |
+          flutter build apk --release \
+            --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
 
       - name: Name the artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk budget-app-android.apk
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            "budget-app-$BUILD_NAME+$BUILD_NUMBER.apk"
 
       # archive: false uploads the file as-is. The artifact takes the file's
       # name; `name` is ignored.
       - uses: actions/upload-artifact@v7
         with:
-          path: budget-app-android.apk
+          path: budget-app-*.apk
           archive: false
           if-no-files-found: error
 
@@ -87,6 +105,9 @@ jobs:
     name: Windows
     needs: analyze
     runs-on: windows-latest
+    env:
+      BUILD_NAME: ${{ needs.analyze.outputs.version }}
+      BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v5
 
@@ -97,15 +118,16 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter build windows --release
+      - run: flutter build windows --release --build-name=$env:BUILD_NAME --build-number=$env:BUILD_NUMBER
+        shell: pwsh
 
       - name: Package
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath budget-app-windows.zip
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "budget-app-$env:BUILD_NAME+$env:BUILD_NUMBER-windows.zip"
         shell: pwsh
 
       - uses: actions/upload-artifact@v7
         with:
-          path: budget-app-windows.zip
+          path: budget-app-*-windows.zip
           archive: false
           if-no-files-found: error
 
@@ -113,6 +135,9 @@ jobs:
     name: Linux AppImage
     needs: analyze
     runs-on: ubuntu-latest
+    env:
+      BUILD_NAME: ${{ needs.analyze.outputs.version }}
+      BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v5
 
@@ -129,7 +154,9 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter build linux --release
+      - run: |
+          flutter build linux --release \
+            --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
 
       - name: Package AppImage
         run: |
@@ -161,10 +188,10 @@ jobs:
           chmod +x appimagetool-x86_64.AppImage
           # --appimage-extract-and-run: runners have no FUSE to mount the tool.
           ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
-            "$APPDIR" budget-app-x86_64.AppImage
+            "$APPDIR" "budget-app-$BUILD_NAME+$BUILD_NUMBER-x86_64.AppImage"
 
       - uses: actions/upload-artifact@v7
         with:
-          path: budget-app-x86_64.AppImage
+          path: budget-app-*.AppImage
           archive: false
           if-no-files-found: error
