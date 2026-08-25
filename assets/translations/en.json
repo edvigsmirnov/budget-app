@@ -1,0 +1,29 @@
+{
+  "common": {
+    "cancel": "Cancel"
+  },
+  "theme": {
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "payment": {
+    "add": "Add payment",
+    "fieldTitle": "TITLE",
+    "fieldAmount": "AMOUNT",
+    "mandatory": "Mandatory",
+    "overdue": "Overdue",
+    "uncertain": "Uncertain"
+  },
+  "coverage": {
+    "covered": "Covered, with room to spare",
+    "exact": "Covered exactly, nothing spare",
+    "short": "Not covered before the next income"
+  },
+  "balance": {
+    "excludedFromWalker": {
+      "one": "{} paid expense excluded",
+      "other": "{} paid expenses excluded"
+    }
+  }
+}

@@ -1,10 +1,17 @@
+import 'dart:async';
+
 import 'package:budget_app/core/theme/sage_tokens.dart';
 import 'package:budget_app/core/theme/theme_mode_controller.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Renders every token and primitive for visual comparison against the design
-/// canvas. Development surface only; dropped from release builds at M3.
+/// canvas, and switches theme and locale so both audits run from one screen.
+/// Development surface only; dropped from release builds at M3.
+///
+/// Section labels and sample rows are fixtures, deliberately not localized.
+/// Only real product copy goes through `tr()`.
 class TokenGalleryPage extends ConsumerWidget {
   const TokenGalleryPage({super.key});
 
@@ -17,6 +24,10 @@ class TokenGalleryPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Sage tokens'),
         actions: <Widget>[
+          TextButton(
+            onPressed: () => unawaited(_cycleLocale(context)),
+            child: Text(context.locale.toString()),
+          ),
           TextButton.icon(
             onPressed: () => ref.read(themeModeProvider.notifier).cycle(),
             icon: Icon(switch (mode) {
@@ -25,9 +36,9 @@ class TokenGalleryPage extends ConsumerWidget {
               ThemeMode.dark => Icons.dark_mode_outlined,
             }),
             label: Text(switch (mode) {
-              ThemeMode.system => 'System',
-              ThemeMode.light => 'Light',
-              ThemeMode.dark => 'Dark',
+              ThemeMode.system => 'theme.system'.tr(),
+              ThemeMode.light => 'theme.light'.tr(),
+              ThemeMode.dark => 'theme.dark'.tr(),
             }),
           ),
           const SizedBox(width: SageSpace.sm),
@@ -102,6 +113,26 @@ class TokenGalleryPage extends ConsumerWidget {
             ),
           ),
 
+          const _SectionLabel('Plurals'),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: SageSpace.sm,
+              children: <Widget>[
+                // Russian needs one/few/many; English needs two forms. Both
+                // resolve from the same key.
+                for (final int n in <int>[1, 2, 5])
+                  Text(
+                    'balance.excludedFromWalker'.plural(
+                      n,
+                      args: <String>['$n'],
+                    ),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+              ],
+            ),
+          ),
+
           const _SectionLabel('Type ramp'),
           _Card(
             child: Column(
@@ -125,7 +156,10 @@ class TokenGalleryPage extends ConsumerWidget {
                   'Paid 12 August',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                Text('AMOUNT', style: Theme.of(context).textTheme.labelSmall),
+                Text(
+                  'payment.fieldAmount'.tr(),
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
               ],
             ),
           ),
@@ -136,14 +170,14 @@ class TokenGalleryPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: SageSpace.md,
               children: <Widget>[
-                FilledButton(
+                FilledButton(onPressed: () {}, child: Text('payment.add'.tr())),
+                OutlinedButton(
                   onPressed: () {},
-                  child: const Text('Add payment'),
+                  child: Text('common.cancel'.tr()),
                 ),
-                OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
-                const TextField(
+                TextField(
                   decoration: InputDecoration(
-                    labelText: 'TITLE',
+                    labelText: 'payment.fieldTitle'.tr(),
                     hintText: 'Rent',
                   ),
                 ),
@@ -151,15 +185,15 @@ class TokenGalleryPage extends ConsumerWidget {
                   spacing: SageSpace.sm,
                   children: <Widget>[
                     Chip(
-                      label: const Text('Mandatory'),
+                      label: Text('payment.mandatory'.tr()),
                       backgroundColor: c.accentTintAlt,
                     ),
                     Chip(
-                      label: const Text('Overdue'),
+                      label: Text('payment.overdue'.tr()),
                       backgroundColor: c.dangerTint,
                     ),
                     Chip(
-                      label: const Text('Uncertain'),
+                      label: Text('payment.uncertain'.tr()),
                       backgroundColor: c.sandTint,
                     ),
                   ],
@@ -207,6 +241,13 @@ class TokenGalleryPage extends ConsumerWidget {
   }
 }
 
+/// Steps through the supported locales, pseudo included in debug.
+Future<void> _cycleLocale(BuildContext context) {
+  final List<Locale> locales = context.supportedLocales;
+  final int next = (locales.indexOf(context.locale) + 1) % locales.length;
+  return context.setLocale(locales[next]);
+}
+
 enum _Coverage { covered, exact, short }
 
 class _Dot extends StatelessWidget {
@@ -218,9 +259,9 @@ class _Dot extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors c = context.sage;
     final (Color color, String label) = switch (coverage) {
-      _Coverage.covered => (c.accentStrong, 'Covered, with room to spare'),
-      _Coverage.exact => (c.warningAccent, 'Covered exactly, nothing spare'),
-      _Coverage.short => (c.danger, 'Not covered before the next income'),
+      _Coverage.covered => (c.accentStrong, 'coverage.covered'.tr()),
+      _Coverage.exact => (c.warningAccent, 'coverage.exact'.tr()),
+      _Coverage.short => (c.danger, 'coverage.short'.tr()),
     };
     return Row(
       children: <Widget>[
