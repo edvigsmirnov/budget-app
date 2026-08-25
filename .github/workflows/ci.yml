@@ -72,10 +72,15 @@ jobs:
       - run: flutter pub get
       - run: flutter build apk --release
 
+      - name: Name the artifact
+        run: mv build/app/outputs/flutter-apk/app-release.apk budget-app-android.apk
+
+      # archive: false uploads the file as-is. The artifact takes the file's
+      # name; `name` is ignored.
       - uses: actions/upload-artifact@v7
         with:
-          name: budget-app-android
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: budget-app-android.apk
+          archive: false
           if-no-files-found: error
 
   windows:
@@ -100,8 +105,8 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: budget-app-windows
           path: budget-app-windows.zip
+          archive: false
           if-no-files-found: error
 
   linux:
@@ -160,6 +165,6 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: budget-app-linux
           path: budget-app-x86_64.AppImage
+          archive: false
           if-no-files-found: error
