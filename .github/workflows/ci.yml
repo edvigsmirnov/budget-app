@@ -1,0 +1,170 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.47.1
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static gate. Everything else waits on this, so a formatting slip never burns
+  # three platform builds.
+  # ---------------------------------------------------------------------------
+  analyze:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # The domain layer must never import Flutter. That constraint is what
+      # keeps the M2 engine testable under plain `dart test`, and it is far too
+      # easy to break with an editor auto-import. The analyzer cannot express a
+      # path-scoped import ban, so it is enforced here.
+      - name: Domain layer stays Flutter-free
+        run: |
+          if [ -d lib/domain ]; then
+            if grep -rn --include='*.dart' -E "^import 'package:flutter" lib/domain; then
+              echo "::error::lib/domain must not import Flutter. Move the widget-facing part to lib/features or lib/core."
+              exit 1
+            fi
+            echo "lib/domain is clean."
+          else
+            echo "lib/domain does not exist yet (arrives in M2)."
+          fi
+
+      - run: dart format --output=none --set-exit-if-changed lib test
+
+      - run: flutter analyze --fatal-infos
+
+      - run: flutter test
+
+  # ---------------------------------------------------------------------------
+  # Release artifacts, one per shipping target. Apple platforms are out of scope
+  # (see docs/IMPLEMENTATION_PLAN.md, G3).
+  # ---------------------------------------------------------------------------
+  android:
+    name: Android APK
+    needs: analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: budget-app-android
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  windows:
+    name: Windows
+    needs: analyze
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+      - name: Package
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath budget-app-windows.zip
+        shell: pwsh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: budget-app-windows
+          path: budget-app-windows.zip
+          if-no-files-found: error
+
+  linux:
+    name: Linux AppImage
+    needs: analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GTK toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev libfuse2
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build linux --release
+
+      - name: Package AppImage
+        run: |
+          APPDIR=build/AppDir
+          mkdir -p "$APPDIR/usr/bin"
+          cp -r build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
+
+          cat > "$APPDIR/budget_app.desktop" <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=Budget
+          Exec=budget_app
+          Icon=budget_app
+          Categories=Office;Finance;
+          DESKTOP
+
+          # Placeholder icon until branding lands; appimagetool requires one.
+          cp linux/runner/resources/*.png "$APPDIR/budget_app.png" 2>/dev/null \
+            || convert -size 256x256 xc:'#8FB996' "$APPDIR/budget_app.png"
+
+          cat > "$APPDIR/AppRun" <<'APPRUN'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/budget_app" "$@"
+          APPRUN
+          chmod +x "$APPDIR/AppRun"
+
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage "$APPDIR" budget-app-x86_64.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: budget-app-linux
+          path: budget-app-x86_64.AppImage
+          if-no-files-found: error
