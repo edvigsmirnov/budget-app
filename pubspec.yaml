@@ -11,19 +11,37 @@ environment:
   sdk: ^3.13.1
 
 dependencies:
+  # AES-GCM for the DEK envelopes. Argon2id (envelope B, PIN) arrives in M7.
+  cryptography: ^2.9.0
   cupertino_icons: ^1.0.8
+  # Money is Decimal end to end, stored as TEXT. Never double.
+  decimal: ^3.2.6
+  drift: ^2.34.3
   # Localization: JSON dictionaries read directly, no .arb conversion step.
   easy_localization: ^3.0.8
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.2
+  # Envelope A key: Keystore / Credential Manager / libsecret.
+  flutter_secure_storage: ^11.0.0
   # Number and date formatting. Locale comes from the device, currency symbol
   # from the Space -- the two are passed to the formatter separately.
   intl: ^0.20.3
+  # Annotations only. lib/domain uses it and must stay Flutter-free.
+  meta: ^1.19.0
+  path: ^1.9.1
+  path_provider: ^2.1.6
   riverpod_annotation: ^4.0.6
+  # Bundles SQLCipher through Dart hooks; see the `hooks` block below.
+  sqlite3: ^3.5.2
+  # IANA database. A Space's "today" is its own timezone's, not the device's
+  # (plan section 2, invariant 7).
+  timezone: ^0.11.1
+  uuid: ^4.6.0
 
 dev_dependencies:
   build_runner: ^2.16.0
+  drift_dev: ^2.34.5
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
@@ -31,6 +49,13 @@ dev_dependencies:
   # easy_localization reads the saved locale through it; widget tests must
   # install a mock store before EasyLocalization.ensureInitialized().
   shared_preferences: ^2.5.3
+
+# Swaps the bundled SQLite for a SQLCipher build on every native target.
+# Replaces sqlcipher_flutter_libs, which is end-of-life.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
 
 flutter:
   uses-material-design: true

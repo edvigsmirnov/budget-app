@@ -25,5 +25,16 @@
       "one": "{} paid expense excluded",
       "other": "{} paid expenses excluded"
     }
+  },
+  "decryption": {
+    "title": "Your data cannot be opened",
+    "body": "The database is on this device, but the key that unlocks it is gone. This usually happens after clearing app data or moving to a new device.",
+    "enterRecoveryKey": "Enter Recovery Key",
+    "restoreFromBackup": "Restore from backup",
+    "startOver": "Start over",
+    "notYetAvailable": "Not available in this version yet",
+    "confirmTitle": "Delete the unreadable data?",
+    "confirmBody": "The database stays unreadable without the key. Starting over deletes it and opens onboarding. This cannot be undone.",
+    "confirmAction": "Delete and start over"
   }
 }

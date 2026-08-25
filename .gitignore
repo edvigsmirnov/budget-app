@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Native assets downloaded by the sqlite3 hook.
+/build/native_assets/
