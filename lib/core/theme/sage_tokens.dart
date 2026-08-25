@@ -1,24 +1,16 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens for the Sage visual identity.
+/// Sage design tokens.
 ///
-/// Light values are lifted verbatim from the Sage design canvas. Dark values are
-/// *derived by role*, not inverted — see `docs/IMPLEMENTATION_PLAN.md` section 5.
+/// Light values come from the design canvas. Dark values are derived by role,
+/// not inverted. See docs/IMPLEMENTATION_PLAN.md section 5.
 ///
-/// Five rules govern the pairs, and breaking them is how a theme rots:
-///
-///   1. Roles swap, hues don't. [accentStrong] is the dark green on light and
-///      the pale green on dark — same hue family, opposite end of the ramp.
-///   2. [accent] fill + [accentOn] text is theme-invariant, as is
-///      [warningAccent]. A filled sage button looks identical in both themes.
-///      Do not "fix" them per theme.
-///   3. Elevation changes mechanism: light uses shadow, dark uses [cardRaised]
-///      plus a hairline, because shadows are invisible on a dark ground.
-///   4. Grounds keep a green bias. A neutral grey dark theme loses the identity
-///      that makes Sage recognisable.
-///   5. Nothing outside this file names a colour. Widgets read tokens through
-///      `Theme.of(context).extension<SageColors>()!` or the [SageColorsX]
-///      shorthand.
+/// Rules, enforced by test/core/theme/sage_theme_test.dart:
+///   1. Roles swap, hues don't.
+///   2. [accent], [accentOn] and [warningAccent] are identical in both themes.
+///   3. Elevation: shadow on light, [cardRaised] on dark.
+///   4. Dark grounds keep a green bias.
+///   5. No colour literals outside this file. Use `context.sage.<token>`.
 @immutable
 class SageColors extends ThemeExtension<SageColors> {
   const SageColors({
@@ -56,8 +48,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Cards, inputs, rows.
   final Color card;
 
-  /// Raised surface. On light this equals [card] — elevation is carried by
-  /// shadow instead. On dark it is a genuinely lighter ground.
+  /// Raised surface. Equals [card] on light, where shadow carries elevation.
   final Color cardRaised;
 
   /// Primary text.
@@ -105,7 +96,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Warning text.
   final Color warning;
 
-  /// Theme-invariant. Orange coverage dot — "covered exactly, nothing spare".
+  /// Theme-invariant. Orange coverage dot: covered exactly, nothing spare.
   final Color warningAccent;
 
   /// Warning wash.
@@ -117,7 +108,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Band fill.
   final Color sandTint;
 
-  /// Verbatim from the Sage design canvas.
+  /// From the design canvas.
   static const SageColors light = SageColors(
     canvas: Color(0xFFEEF1EA),
     surface: Color(0xFFF5F7F1),
@@ -125,8 +116,10 @@ class SageColors extends ThemeExtension<SageColors> {
     cardRaised: Color(0xFFFFFFFF),
     ink: Color(0xFF2B2F28),
     inkHeading: Color(0xFF243226),
-    inkSecondary: Color(0x992B2F28), // ink @ .60
-    inkLabel: Color(0x802B2F28), // ink @ .50
+    // Raised from canvas .60/.50, which measured 3.69:1 and 3.0:1 against a
+    // 4.5:1 AA bar. Ordering preserved: secondary darker than labels.
+    inkSecondary: Color(0xC72B2F28), // ink @ .78 -> 6.20:1 on canvas
+    inkLabel: Color(0xAC2B2F28), // ink @ .675 -> 4.55:1 on canvas
     hairline: Color(0x142B2F28), // ink @ .08
     border: Color(0x262B2F28), // ink @ .15
     accent: Color(0xFF8FB996),
@@ -284,8 +277,7 @@ abstract final class SageSpace {
   static const double xl = 28;
 }
 
-/// Shorthand so widgets read `context.sage.accent` rather than the full
-/// `Theme.of(context).extension<SageColors>()!` incantation.
+/// Shorthand for `Theme.of(context).extension<SageColors>()!`.
 extension SageColorsX on BuildContext {
   SageColors get sage => Theme.of(this).extension<SageColors>()!;
 }

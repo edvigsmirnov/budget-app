@@ -19,9 +19,7 @@ class BudgetApp extends ConsumerWidget {
       theme: SageTheme.light,
       darkTheme: SageTheme.dark,
       themeMode: ref.watch(themeModeProvider),
-      // M0 has no router yet. The token gallery is the only surface, and it is
-      // what the M0 exit criterion is checked against. M3 introduces the real
-      // shell and drops this page from release builds.
+      // No router until M3. The token gallery is the only surface in M0.
       home: const TokenGalleryPage(),
     );
   }

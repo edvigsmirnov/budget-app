@@ -14,10 +14,7 @@ env:
   FLUTTER_VERSION: 3.47.1
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Static gate. Everything else waits on this, so a formatting slip never burns
-  # three platform builds.
-  # ---------------------------------------------------------------------------
+  # Static gate. Platform builds depend on it, so a lint failure costs one job.
   analyze:
     name: Analyze and test
     runs-on: ubuntu-latest
@@ -32,10 +29,9 @@ jobs:
 
       - run: flutter pub get
 
-      # The domain layer must never import Flutter. That constraint is what
-      # keeps the M2 engine testable under plain `dart test`, and it is far too
-      # easy to break with an editor auto-import. The analyzer cannot express a
-      # path-scoped import ban, so it is enforced here.
+      # lib/domain must not import Flutter; that keeps the M2 engine testable
+      # under plain `dart test`. The analyzer cannot express a path-scoped
+      # import ban, so it is checked here.
       - name: Domain layer stays Flutter-free
         run: |
           if [ -d lib/domain ]; then
@@ -54,10 +50,7 @@ jobs:
 
       - run: flutter test
 
-  # ---------------------------------------------------------------------------
-  # Release artifacts, one per shipping target. Apple platforms are out of scope
-  # (see docs/IMPLEMENTATION_PLAN.md, G3).
-  # ---------------------------------------------------------------------------
+  # Release artifacts. Apple platforms out of scope (plan, G3).
   android:
     name: Android APK
     needs: analyze
@@ -148,7 +141,7 @@ jobs:
           Categories=Office;Finance;
           DESKTOP
 
-          # Placeholder icon until branding lands; appimagetool requires one.
+          # appimagetool requires an icon; placeholder until branding lands.
           cp linux/runner/resources/*.png "$APPDIR/budget_app.png" 2>/dev/null \
             || convert -size 256x256 xc:'#8FB996' "$APPDIR/budget_app.png"
 

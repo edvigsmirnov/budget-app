@@ -1,14 +1,9 @@
 # Static analysis configuration.
 #
-# Two rules here are load-bearing rather than stylistic:
+# lib/domain must not import Flutter. The analyzer cannot express a path-scoped
+# import ban, so CI enforces it — see .github/workflows/ci.yml.
 #
-#   * `lib/domain/**` must never import Flutter. That constraint is what makes the
-#     M2 engine testable with plain `dart test`. The analyzer cannot express a
-#     path-scoped import ban, so CI enforces it with a grep step — see
-#     .github/workflows/ci.yml. Breaking it will fail the build, not just lint.
-#
-#   * Generated sources are excluded from analysis but NOT from formatting checks,
-#     so a stale `build_runner` run still shows up in review.
+# Generated sources are excluded from analysis but not from formatting checks.
 
 include: package:flutter_lints/flutter.yaml
 
@@ -28,14 +23,12 @@ analyzer:
     strict-inference: true
     strict-raw-types: true
   errors:
-    # Unused code is a bug in the making, not a style preference.
     unused_import: error
     unused_local_variable: error
     unused_element: error
     dead_code: error
-    # A missing await in sync/backup code silently loses writes.
+    # A missing await in sync or backup code silently loses writes.
     unawaited_futures: error
-    # TODOs are fine; untracked ones are not.
     todo: ignore
 
 linter:
@@ -52,12 +45,10 @@ linter:
     throw_in_finally: true
     unnecessary_statements: true
 
-    # --- money and time ---
-    # Doubles are wrong for currency; this project uses Decimal end to end.
-    # (Enforced by review, not lint — noted here so the intent is discoverable.)
+    # Money uses Decimal, never double. Enforced by review, not lint.
     prefer_int_literals: false
 
-    # --- style, chosen once so review never argues about it ---
+    # --- style ---
     always_use_package_imports: true
     prefer_single_quotes: true
     prefer_final_locals: true
@@ -68,6 +59,6 @@ linter:
     use_string_buffers: true
 
     # --- API hygiene ---
-    public_member_api_docs: false # too noisy for an app; enforced on domain/ by review
+    public_member_api_docs: false # too noisy for an app
     avoid_positional_boolean_parameters: true
     use_enums: true

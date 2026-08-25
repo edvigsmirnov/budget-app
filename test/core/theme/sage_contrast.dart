@@ -1,18 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-/// WCAG 2.1 contrast helpers.
-///
-/// Used by the theme tests to keep the derived dark palette honest: a colour
-/// pair that reads well on the design canvas can quietly fall below threshold
-/// once it is translated to the other theme, and nobody notices until a user
-/// with a dim screen complains.
+/// WCAG 2.1 contrast helpers for the theme tests.
 
-/// Composites a possibly-translucent [foreground] over an opaque [background].
-///
-/// Several ink tokens are expressed as an alpha over the ground rather than a
-/// solid value, so contrast must be measured against the composited result, not
-/// the nominal colour.
+/// Composites a translucent [foreground] over an opaque [background].
+/// Ink tokens carry alpha, so contrast must use the composited result.
 Color composite(Color foreground, Color background) {
   final double a = foreground.a;
   double mix(double f, double b) => f * a + b * (1 - a);

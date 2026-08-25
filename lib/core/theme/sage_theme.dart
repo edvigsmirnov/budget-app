@@ -1,10 +1,8 @@
 import 'package:budget_app/core/theme/sage_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// Builds the two [ThemeData] objects the app ships with.
-///
-/// Both are assembled from the same [SageColors] token set, so a widget written
-/// against tokens is correct in either theme without a per-theme branch.
+/// Builds both [ThemeData] objects from the same [SageColors] token set, so
+/// token-based widgets need no per-theme branching.
 abstract final class SageTheme {
   static ThemeData get light => _build(SageColors.light, Brightness.light);
 
@@ -39,9 +37,8 @@ abstract final class SageTheme {
       outlineVariant: c.hairline,
     );
 
-    // Sage uses the platform system font throughout; the ramp is weight and
-    // size, not typeface. Keeping `fontFamily` null preserves the correct
-    // system face per platform instead of shipping one that is wrong on two.
+    // System font throughout; the ramp is weight and size, not typeface.
+    // `fontFamily` stays null so each platform uses its own face.
     final TextTheme text = TextTheme(
       // Dashboard hero figure.
       displaySmall: TextStyle(
@@ -118,7 +115,7 @@ abstract final class SageTheme {
       dividerTheme: DividerThemeData(color: c.hairline, thickness: 1, space: 1),
       cardTheme: CardThemeData(
         color: c.card,
-        // Rule 3: shadow carries elevation on light, a lighter ground on dark.
+        // Rule 3: shadow on light, lighter ground on dark.
         elevation: brightness == Brightness.light ? 1 : 0,
         shadowColor: brightness == Brightness.light
             ? const Color(0x14000000)
@@ -141,7 +138,7 @@ abstract final class SageTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          // Rule 2: this pair is identical in both themes on purpose.
+          // Rule 2: identical in both themes.
           backgroundColor: c.accent,
           foregroundColor: c.accentOn,
           textStyle: text.labelLarge,

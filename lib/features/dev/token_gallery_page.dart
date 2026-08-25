@@ -3,12 +3,8 @@ import 'package:budget_app/core/theme/theme_mode_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Renders every design token and primitive in one place.
-///
-/// This is the M0 exit criterion made checkable: put this page beside the Sage
-/// canvas and the light column must match it, then flip to dark and confirm the
-/// derived set still holds its contrast. It is a development surface, not a
-/// shipped screen — the router drops it from release builds at M3.
+/// Renders every token and primitive for visual comparison against the design
+/// canvas. Development surface only; dropped from release builds at M3.
 class TokenGalleryPage extends ConsumerWidget {
   const TokenGalleryPage({super.key});
 
