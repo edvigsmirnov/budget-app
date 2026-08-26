@@ -1,0 +1,50 @@
+{
+  // Flutter symlinks every plugin in the dependency graph into each desktop
+  // target's ephemeral folder, Android-only packages included. `jni`, pulled in
+  // by path_provider_android, brings its own Gradle project and its own example
+  // app. The Gradle extension crawls the workspace, finds those build files and
+  // fails to configure them: they have no local.properties, and their
+  // com.android.library plugin is not on this build's classpath.
+  //
+  // None of it touches `flutter build`. The fix is to keep those paths out of
+  // the workspace file index the extension enumerates, which means
+  // files.exclude — search.exclude alone is not enough, since the extension
+  // discovers projects through the file API rather than through search.
+  "files.exclude": {
+    "**/linux/flutter/ephemeral": true,
+    "**/windows/flutter/ephemeral": true,
+    "**/.dart_tool": true
+  },
+  "gradle.nestedProjects": false,
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/build/**",
+    "**/linux/flutter/ephemeral/**",
+    "**/windows/flutter/ephemeral/**",
+    "**/.dart_tool/**"
+  ],
+  "files.watcherExclude": {
+    "**/build/**": true,
+    "**/.dart_tool/**": true,
+    "**/linux/flutter/ephemeral/**": true,
+    "**/windows/flutter/ephemeral/**": true
+  },
+  "search.exclude": {
+    "**/build/**": true,
+    "**/.dart_tool/**": true,
+    "**/linux/flutter/ephemeral/**": true,
+    "**/windows/flutter/ephemeral/**": true,
+    // Generated: read the table definitions and the schema snapshots instead.
+    "**/*.g.dart": true,
+    "test/db/generated_migrations/**": true
+  },
+  "dart.analysisExcludedFolders": [
+    "build",
+    "linux/flutter/ephemeral",
+    "windows/flutter/ephemeral"
+  ],
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.rulers": [80]
+  }
+}
