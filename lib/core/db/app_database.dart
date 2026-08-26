@@ -34,10 +34,12 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
-  /// Bumped on every schema change, with a step in [migration] and a test that
-  /// walks every prior version forward (spec 10.6).
+  /// Bumped on every schema change, with a step in [migration] and a snapshot
+  /// regenerated for the migration harness (spec 10.6).
+  static const int currentSchemaVersion = 1;
+
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => currentSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
