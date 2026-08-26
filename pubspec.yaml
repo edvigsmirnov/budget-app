@@ -5,7 +5,7 @@ publish_to: 'none'
 # Minor tracks the milestone: 0.1.0 = M0, 0.2.0 = M1, 1.0.0 = public release at
 # M11. The build number here is only for local builds; CI overrides it with the
 # workflow run number so every artifact is unique and monotonic.
-version: 0.2.0+1
+version: 0.3.0+1
 
 environment:
   sdk: ^3.13.1
