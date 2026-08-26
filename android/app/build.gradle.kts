@@ -6,7 +6,12 @@ plugins {
 
 android {
     namespace = "dev.edvig.budget_app"
-    compileSdk = flutter.compileSdkVersion
+    // Above flutter.compileSdkVersion (36) because flutter_secure_storage
+    // compiles against 37. compileSdk only widens the API surface available at
+    // compile time; minSdk and targetSdk below are untouched, so neither the
+    // supported device range nor the runtime behaviour changes.
+    compileSdk = 37
+    compileSdkMinor = 1
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,24 +20,17 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "dev.edvig.budget_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
+        // From pubspec, or from --build-number/--build-name in CI.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Debug keys until release signing lands in M11.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
