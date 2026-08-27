@@ -207,14 +207,17 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
         date.isAfter(today.addMonths(12 * 10));
   }
 
-  /// The control belongs to income-driven Spaces alone, and only where both
-  /// cycles exist to choose between. A series is filed occurrence by
-  /// occurrence, so it is not offered there either (spec 5.3).
+  /// The control belongs to income-driven Spaces alone, and only where the
+  /// date genuinely leaves the cycle in doubt — inside the uncertainty window
+  /// of a boundary (spec 5.1.1). Anywhere else the date decides and the choice
+  /// is made already. A series is filed occurrence by occurrence, so it is not
+  /// offered there either (spec 5.3).
   bool _showPeriodChoice(Space space) =>
       space.budgetMode == BudgetMode.incomeDriven &&
       !_isFrozen &&
       !_isRecurring &&
-      _periods.next != null;
+      _periods.next != null &&
+      periodIsAmbiguousOn(ref.read(incomePeriodsProvider), _date!);
 
   Future<void> _pickDate() async {
     final CalendarDate current = _date ?? ref.read(spaceClockProvider).today();
@@ -557,6 +560,9 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                         maxLines: 3,
                         maxLength: 5000,
                         textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText: tr('payment.notesHint'),
+                        ),
                       ),
                     ),
                   SwitchListTile.adaptive(
@@ -649,6 +655,27 @@ class _LivePreview extends ConsumerWidget {
     );
   }
 
+  /// "12.08 – 10.09" for the cycle the draft lands in, or null in a mode that
+  /// has no cycles.
+  String? _periodLabel(WidgetRef ref, BuildContext context) {
+    final CalendarDate? draftDate = date;
+    if (draftDate == null) return null;
+    if (ref.watch(currentSpaceProvider)?.budgetMode !=
+        BudgetMode.incomeDriven) {
+      return null;
+    }
+
+    final BudgetPeriod? target = periodsAround(
+      ref.watch(incomePeriodsProvider),
+      draftDate,
+    ).forChoice(periodChoice);
+    final CalendarDate? end = target?.endDate;
+    if (target == null || end == null) return null;
+
+    final DateLabels dates = DateLabels(context.locale.toString());
+    return '${dates.short(target.startDate)} – ${dates.short(end)}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final SageColors sage = context.sage;
@@ -715,19 +742,35 @@ class _LivePreview extends ConsumerWidget {
     final Decimal? afterFree = after.freeCash;
     final Color afterColor = afterFree == null ? sage.danger : sage.ink;
 
+    // Which cycle the figures describe, so the current/next choice is legible
+    // before anything is saved (spec 6.1).
+    final String? periodLabel = _periodLabel(ref, context);
+
     return Container(
       width: double.infinity,
-      color: sage.canvas,
-      padding: const EdgeInsets.symmetric(
-        horizontal: SageSpace.formGutter,
-        vertical: SageSpace.md,
+      margin: const EdgeInsets.fromLTRB(
+        SageSpace.formGutter,
+        SageSpace.md,
+        SageSpace.formGutter,
+        0,
+      ),
+      padding: const EdgeInsets.all(SageSpace.md),
+      decoration: BoxDecoration(
+        color: sage.accentTint,
+        borderRadius: BorderRadius.circular(SageRadius.card),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(tr('dashboard.freeMoney'), style: text.labelSmall),
+          Text(
+            periodLabel == null
+                ? tr('dashboard.freeMoney')
+                : '${tr('dashboard.freeMoney')} ($periodLabel)',
+            style: text.bodySmall?.copyWith(color: sage.inkSecondary),
+          ),
           const SizedBox(height: SageSpace.xs),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Text(
                 beforeFree == null
@@ -743,12 +786,35 @@ class _LivePreview extends ConsumerWidget {
                   color: sage.inkLabel,
                 ),
               ),
-              Text(
-                afterFree == null
-                    ? tr('dashboard.notCovered')
-                    : money.format(afterFree),
-                style: text.titleSmall?.copyWith(color: afterColor),
+              Flexible(
+                child: Text(
+                  afterFree == null
+                      ? tr('dashboard.notCovered')
+                      : money.format(afterFree),
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium?.copyWith(color: afterColor),
+                ),
               ),
+              // The change itself, as its own mark: the two figures say where
+              // you were and where you land, the pill says what it cost.
+              if (draftAmount != null &&
+                  draftAmount > Decimal.zero) ...<Widget>[
+                const SizedBox(width: SageSpace.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: sage.dangerTint,
+                    borderRadius: BorderRadius.circular(SageRadius.pill),
+                  ),
+                  child: Text(
+                    '−${money.format(draftAmount)}',
+                    style: text.labelSmall?.copyWith(color: sage.danger),
+                  ),
+                ),
+              ],
             ],
           ),
           if (isRecurring && draft.length > 1) ...<Widget>[

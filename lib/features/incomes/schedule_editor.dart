@@ -109,49 +109,39 @@ class ScheduleEditor extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         FieldLabel(tr('schedule.type')),
-        for (final ScheduleType type in ScheduleType.values) ...<Widget>[
-          SageCard(
-            selected: draft.type == type,
-            onTap: () => onChanged(draft.copyWith(type: type)),
-            padding: const EdgeInsets.symmetric(
-              horizontal: SageSpace.md,
-              vertical: SageSpace.md,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Icon(
-                  draft.type == type
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  size: 20,
-                  color: draft.type == type
-                      ? context.sage.accentStrong
-                      : context.sage.inkLabel,
-                ),
-                const SizedBox(width: SageSpace.md),
+        // Four chips in a two-by-two block rather than four stacked cards
+        // (design section 5.1): the four are alternatives of equal weight, and
+        // a vertical list of explanations buries the fields underneath them.
+        for (int row = 0; row < 2; row++) ...<Widget>[
+          Row(
+            children: <Widget>[
+              for (int col = 0; col < 2; col++) ...<Widget>[
+                if (col == 1) const SizedBox(width: SageSpace.sm),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        tr('schedule.${type.name}.name'),
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      Text(
-                        tr('schedule.${type.name}.hint'),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+                  child: _TypeChip(
+                    type: ScheduleType.values[row * 2 + col],
+                    selected: draft.type == ScheduleType.values[row * 2 + col],
+                    onTap: () => onChanged(
+                      draft.copyWith(type: ScheduleType.values[row * 2 + col]),
+                    ),
                   ),
                 ),
               ],
-            ),
+            ],
           ),
           const SizedBox(height: SageSpace.sm),
         ],
+        const SizedBox(height: SageSpace.xs),
+        // The chosen shape explained where it was chosen, one line instead of
+        // four competing for the same attention.
+        Text(
+          tr('schedule.${draft.type.name}.hint'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: SageSpace.md),
         _fieldsFor(context),
+        const SizedBox(height: SageSpace.md),
+        const UncertaintyNote(),
       ],
     );
   }
@@ -171,6 +161,76 @@ class ScheduleEditor extends StatelessWidget {
       onChanged: onChanged,
     ),
   };
+}
+
+/// One of the four schedule shapes, as a chip.
+class _TypeChip extends StatelessWidget {
+  const _TypeChip({
+    required this.type,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ScheduleType type;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SageRadius.button),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? sage.accentTint : sage.card,
+          borderRadius: BorderRadius.circular(SageRadius.button),
+          border: Border.all(
+            color: selected ? sage.accentStrong : sage.border,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          tr('schedule.${type.name}.name'),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: selected ? sage.accentStrong : sage.inkSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// What happens when a computed date lands on a weekend or a holiday.
+///
+/// Stated on the form rather than discovered later on the calendar: the rule
+/// decides which cycle a salary opens, and it is not one a reader would guess
+/// (spec 5.1.1).
+class UncertaintyNote extends StatelessWidget {
+  const UncertaintyNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(SageSpace.md),
+      decoration: BoxDecoration(
+        color: sage.accentTint,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+      ),
+      child: Text(
+        tr('schedule.uncertaintyNote'),
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: sage.inkSecondary),
+      ),
+    );
+  }
 }
 
 /// "The 26th of every month."

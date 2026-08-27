@@ -14,10 +14,14 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/incomes/income_scope_dialog.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
+import 'package:sielto/features/periods/period_choice.dart';
+import 'package:sielto/features/space/period_ledger.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// Opens the income form (spec 5.1, 5.4).
 ///
@@ -430,6 +434,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                   onTap: _isFrozen ? null : () => _pickDate(actual: false),
                 ),
               ),
+              const SizedBox(height: SageSpace.sm),
+              _LandsIn(date: _date!, amount: _parsedAmount, money: money),
               const SizedBox(height: SageSpace.lg),
             ],
 
@@ -581,6 +587,111 @@ class _AppendNoteField extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// Which cycle a one-off income joins, and what it does to that cycle's free
+/// money (spec 5.4, 6.1).
+///
+/// Told rather than asked: a one-off income is always additional — anchoring
+/// requires a repeating schedule — so it never moves a boundary, and its date
+/// alone decides which cycle it lands in. There is nothing here for the user
+/// to choose, only something for them to see.
+class _LandsIn extends ConsumerWidget {
+  const _LandsIn({
+    required this.date,
+    required this.amount,
+    required this.money,
+  });
+
+  final CalendarDate date;
+  final Decimal? amount;
+  final MoneyFormat money;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(currentSpaceProvider)?.budgetMode !=
+        BudgetMode.incomeDriven) {
+      return const SizedBox.shrink();
+    }
+
+    final BudgetPeriod? period = periodsAround(
+      ref.watch(incomePeriodsProvider),
+      date,
+    ).current;
+    final CalendarDate? end = period?.endDate;
+    if (period == null || end == null) return const SizedBox.shrink();
+
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
+    final DateLabels dates = DateLabels(context.locale.toString());
+
+    // The figure the cycle would carry once this arrives. Null while the
+    // amount is empty, which is allowed: an inflow of unknown size is a real
+    // answer (spec 4.7).
+    final PeriodLedger ledger = buildPeriodLedger(
+      period: period,
+      payments: ref.watch(spacePaymentsProvider).value ?? const <Payment>[],
+      incomes: ref.watch(spaceIncomesProvider).value ?? const <Income>[],
+      anchorRuleIds: <String>{
+        for (final IncomeRecurrenceRule r
+            in ref.watch(incomeRulesProvider).value ??
+                const <IncomeRecurrenceRule>[])
+          if (r.isAnchor) r.id,
+      },
+      today: ref.watch(spaceClockProvider).today(),
+    );
+    final Decimal? free = ledger.freeCash;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(SageSpace.md),
+      decoration: BoxDecoration(
+        color: sage.accentTint,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            tr(
+              'income.landsIn',
+              namedArgs: <String, String>{
+                'period':
+                    '${dates.short(period.startDate)} – ${dates.short(end)}',
+              },
+            ),
+            style: text.bodySmall?.copyWith(color: sage.inkSecondary),
+          ),
+          if (free != null && amount != null) ...<Widget>[
+            const SizedBox(height: SageSpace.xs),
+            Row(
+              children: <Widget>[
+                Text(
+                  money.format(free),
+                  style: text.titleSmall?.copyWith(color: sage.inkSecondary),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
+                  child: Icon(
+                    Icons.arrow_forward,
+                    size: 16,
+                    color: sage.inkLabel,
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    money.format(free + amount!),
+                    overflow: TextOverflow.ellipsis,
+                    style: text.titleMedium?.copyWith(color: sage.accentStrong),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 /// A tappable date, shown as a field. Shared with the receipt dialog.

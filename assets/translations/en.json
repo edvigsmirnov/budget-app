@@ -184,7 +184,8 @@
     "periodAuto": "By date",
     "periodCurrent": "Current period",
     "periodNext": "Next period",
-    "periodHint": "By date follows the due date. A period chosen by hand is kept even when the salary moves."
+    "periodHint": "By date follows the due date. A period chosen by hand is kept even when the salary moves.",
+    "notesHint": "For example: discussed with Tatiana, moved the purchase to after payday"
   },
   "expenseType": {
     "mandatory": "Mandatory",
@@ -239,7 +240,8 @@
     "deleteRuleBody": "Future occurrences of \"{title}\" are removed. Ones already received stay.",
     "editRule": "Edit regular income",
     "ruleAmountHint": "Applies to every occurrence that has not arrived yet. Months already marked received keep their own figure.",
-    "ruleScheduleHint": "Changing the schedule re-dates the occurrences that have not arrived yet."
+    "ruleScheduleHint": "Changing the schedule re-dates the occurrences that have not arrived yet.",
+    "landsIn": "Joins the cycle {period}"
   },
   "category": {
     "title": "Categories",
@@ -255,7 +257,9 @@
     "deleteBody": "Payments filed under \"{title}\" keep its name, but it can no longer be chosen for new ones.",
     "deleted": "Deleted \"{title}\"",
     "fieldIcon": "Icon",
-    "iconHint": "Any emoji"
+    "iconHint": "Any emoji",
+    "pick": "Choose a category",
+    "search": "Search categories"
   },
   "starterCategory": {
     "rent": "Rent",
@@ -315,7 +319,8 @@
       "name": "Days from the month edge",
       "hint": "The first or last few days of the month.",
       "summary": "{count} days from the {anchor} of the month"
-    }
+    },
+    "uncertaintyNote": "If the date falls on a weekend or a holiday, the anchor moves to the nearest working day — forward, unless that would leave the month."
   },
   "ordinal": {
     "first": "First",

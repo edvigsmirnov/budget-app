@@ -155,6 +155,53 @@ void main() {
     });
   });
 
+  group('periodIsAmbiguousOn', () {
+    // The control is only worth showing where the boundary is genuinely in
+    // doubt — inside an anchor's uncertainty window (spec 5.1.1).
+    Future<BudgetPeriod> withWindow(
+      String start,
+      String end,
+      String windowStart,
+      String windowEnd,
+    ) => repos.periods.createIncomeDriven(
+      spaceId: space.id,
+      startDate: d(start),
+      endDate: d(end),
+      anchorDate: d(windowEnd),
+      windowStart: d(windowStart),
+      windowEnd: d(windowEnd),
+    );
+
+    test('a date inside a real window is ambiguous', () async {
+      await withWindow('2026-06-01', '2026-06-30', '2026-05-29', '2026-06-01');
+      final List<BudgetPeriod> all = await repos.periods.incomeDrivenIn(
+        space.id,
+      );
+      expect(periodIsAmbiguousOn(all, d('2026-05-30')), isTrue);
+    });
+
+    test('a date outside every window is not', () async {
+      await withWindow('2026-06-01', '2026-06-30', '2026-05-29', '2026-06-01');
+      final List<BudgetPeriod> all = await repos.periods.incomeDrivenIn(
+        space.id,
+      );
+      expect(periodIsAmbiguousOn(all, d('2026-06-15')), isFalse);
+    });
+
+    test('a window of one day resolved, so it asks nothing', () async {
+      // The anchor landed on a working day: there was never a span.
+      await withWindow('2026-06-02', '2026-06-30', '2026-06-02', '2026-06-02');
+      final List<BudgetPeriod> all = await repos.periods.incomeDrivenIn(
+        space.id,
+      );
+      expect(periodIsAmbiguousOn(all, d('2026-06-02')), isFalse);
+    });
+
+    test('the periods created without windows ask nothing either', () async {
+      expect(periodIsAmbiguousOn(await periods(), d('2026-03-20')), isFalse);
+    });
+  });
+
   test('forChoice maps byDate and current onto the same cycle', () async {
     final PeriodPair pair = periodsAround(await periods(), d('2026-03-20'));
     expect(pair.forChoice(PeriodChoice.byDate)?.id, march.id);

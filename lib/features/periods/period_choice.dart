@@ -50,6 +50,26 @@ PeriodPair periodsAround(List<BudgetPeriod> periods, CalendarDate date) {
   return const PeriodPair(current: null, next: null);
 }
 
+/// Whether [date] sits inside a boundary nobody can be sure of yet.
+///
+/// A cycle opens when its anchor income arrives, and where that date fell on a
+/// weekend the arrival is a span rather than a day (spec 5.1.1). A payment
+/// dated inside that span could honestly belong to either cycle — which is the
+/// only situation where asking the user is worth anything. Everywhere else the
+/// date answers on its own, and a control offering a choice that has already
+/// been made is just another thing to read.
+bool periodIsAmbiguousOn(List<BudgetPeriod> periods, CalendarDate date) {
+  for (final BudgetPeriod p in periods) {
+    if (p.periodType != PeriodType.incomeDriven) continue;
+    final CalendarDate? from = p.windowStart;
+    final CalendarDate? to = p.windowEnd;
+    // A window of one day resolved to a certainty; there is nothing to ask.
+    if (from == null || to == null || from == to) continue;
+    if (!from.isAfter(date) && !to.isBefore(date)) return true;
+  }
+  return false;
+}
+
 /// What the form should show for an existing payment.
 ///
 /// A pin to something that is neither the containing period nor the one after
