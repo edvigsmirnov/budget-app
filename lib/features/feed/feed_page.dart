@@ -137,14 +137,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         children: <Widget>[
           Expanded(
             child: items.isEmpty
-                ? EmptyState(
-                    message: tr('feed.empty'),
-                    action: FilledButton(
-                      onPressed: () =>
-                          openPaymentForm(context, date: source.today),
-                      child: Text(tr('payment.add')),
-                    ),
-                  )
+                // No button of its own: the add menu is on the button that is
+                // always there, and a second one that adds only a payment
+                // teaches the wrong shortcut on the emptiest screen.
+                ? EmptyState(message: tr('feed.empty'))
                 : ReorderableListView.builder(
                     scrollController: _scroll,
                     buildDefaultDragHandles: false,

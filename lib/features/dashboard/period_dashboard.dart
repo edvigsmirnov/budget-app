@@ -163,14 +163,31 @@ class _FloatingAnchorCard extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
     final Income? income = ledger.nearestIncome;
 
+    // Two ways to arrive here, and they need different offers. Either the
+    // salary is on the calendar with no figure on it — then say what to fill
+    // in — or the cycle has no income row at all, which is what deleting every
+    // occurrence of a rule leaves behind. The second must still lead somewhere:
+    // a screen that reports a problem and offers nothing is a dead end.
+    final bool hasRowToFill = income != null;
+
     return SageCard(
       padding: const EdgeInsets.all(SageSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(tr('period.amountUnknownTitle'), style: text.titleSmall),
+          Text(
+            hasRowToFill
+                ? tr('period.amountUnknownTitle')
+                : tr('period.noIncomeTitle'),
+            style: text.titleSmall,
+          ),
           const SizedBox(height: SageSpace.sm),
-          Text(tr('period.amountUnknownBody'), style: text.bodySmall),
+          Text(
+            hasRowToFill
+                ? tr('period.amountUnknownBody')
+                : tr('period.noIncomeBody'),
+            style: text.bodySmall,
+          ),
           const SizedBox(height: SageSpace.md),
           const Hairline(),
           const SizedBox(height: SageSpace.md),
@@ -182,11 +199,14 @@ class _FloatingAnchorCard extends StatelessWidget {
                   value: money.format(ledger.totalPlanned),
                 ),
               ),
-              if (income != null)
-                TextButton(
-                  onPressed: () => openIncomeForm(context, incomeId: income.id),
-                  child: Text(tr('period.setAmount')),
+              TextButton(
+                onPressed: () => hasRowToFill
+                    ? openIncomeForm(context, incomeId: income.id)
+                    : openIncomeForm(context, date: ledger.period.startDate),
+                child: Text(
+                  hasRowToFill ? tr('period.setAmount') : tr('income.add'),
                 ),
+              ),
             ],
           ),
         ],
