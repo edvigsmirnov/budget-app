@@ -24,6 +24,7 @@ class FeedRecord {
     this.categoryId,
     this.notes,
     this.groupRecurringId,
+    this.budgetPeriodId,
   });
 
   factory FeedRecord.fromPayment(Payment p) => FeedRecord(
@@ -38,6 +39,7 @@ class FeedRecord {
     categoryId: p.categoryId,
     notes: p.notes,
     groupRecurringId: p.groupRecurringId,
+    budgetPeriodId: p.budgetPeriodId,
   );
 
   factory FeedRecord.fromIncome(Income i) => FeedRecord(
@@ -49,6 +51,8 @@ class FeedRecord {
     isIncome: true,
     isPaid: i.isPaid,
     sortOrder: i.sortOrder,
+    notes: i.notes,
+    budgetPeriodId: i.budgetPeriodId,
   );
 
   final String id;
@@ -62,6 +66,10 @@ class FeedRecord {
   final String? categoryId;
   final String? notes;
   final String? groupRecurringId;
+
+  /// The period the row is bound to, which decides whether it is frozen
+  /// (spec 5.5). Null until a recompute has placed it.
+  final String? budgetPeriodId;
 
   bool get isMandatory => expenseType == ExpenseType.mandatory;
 

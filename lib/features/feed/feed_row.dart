@@ -20,6 +20,9 @@ double rowHeightFor(FeedDensity density) => switch (density) {
 /// Every gesture on this row is one of four: tap to edit, the circle to toggle
 /// paid, swipe right to delete, long-press for the quick-add menu. Reordering
 /// uses the grip on the right.
+///
+/// A frozen row keeps tap and long-press and loses the rest: the record can be
+/// read and recategorised, not deleted or unmarked (spec 5.5).
 class FeedRowTile extends StatelessWidget {
   const FeedRowTile({
     required this.record,
@@ -31,6 +34,7 @@ class FeedRowTile extends StatelessWidget {
     required this.onTogglePaid,
     required this.onDelete,
     required this.onLongPress,
+    this.isFrozen = false,
     this.dragHandle,
     super.key,
   });
@@ -48,6 +52,10 @@ class FeedRowTile extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onLongPress;
 
+  /// The row's period has closed, so the swipe actions and the paid circle are
+  /// inert (spec 5.5).
+  final bool isFrozen;
+
   /// The reorder grip, supplied by the list so it can attach its own listener.
   final Widget? dragHandle;
 
@@ -63,7 +71,7 @@ class FeedRowTile extends StatelessWidget {
       key: ValueKey<String>('dismiss:${record.id}'),
       // Right for delete, left for the paid toggle — the same two actions the
       // circle and the row menu offer (spec 4.5).
-      direction: DismissDirection.horizontal,
+      direction: isFrozen ? DismissDirection.none : DismissDirection.horizontal,
       background: const _SwipeAction(
         alignment: Alignment.centerLeft,
         icon: Icons.delete_outline,
@@ -95,7 +103,10 @@ class FeedRowTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
             child: Row(
               children: <Widget>[
-                _PaidCircle(record: record, onTap: onTogglePaid),
+                _PaidCircle(
+                  record: record,
+                  onTap: isFrozen ? null : onTogglePaid,
+                ),
                 const SizedBox(width: SageSpace.md),
                 _TypeMarker(record: record, category: category),
                 const SizedBox(width: SageSpace.md),
@@ -125,6 +136,15 @@ class FeedRowTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (isFrozen)
+                  Padding(
+                    padding: const EdgeInsets.only(right: SageSpace.sm),
+                    child: Icon(
+                      Icons.lock_outline,
+                      size: 14,
+                      color: sage.inkLabel,
+                    ),
+                  ),
                 if (record.notes != null && record.notes!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(right: SageSpace.sm),
@@ -195,7 +215,10 @@ class _PaidCircle extends StatelessWidget {
   const _PaidCircle({required this.record, required this.onTap});
 
   final FeedRecord record;
-  final VoidCallback onTap;
+
+  /// Null when the row is frozen: the mark records what happened and no longer
+  /// changes (spec 5.5).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

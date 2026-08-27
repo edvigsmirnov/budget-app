@@ -150,7 +150,8 @@
     "addBefore": "Add on the day before",
     "addAfter": "Add on the day after",
     "duplicateBefore": "Duplicate to the day before",
-    "duplicateAfter": "Duplicate to the day after"
+    "duplicateAfter": "Duplicate to the day after",
+    "periodMoney": "Period money"
   },
   "payment": {
     "add": "Add expense",

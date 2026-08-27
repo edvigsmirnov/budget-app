@@ -11,6 +11,7 @@ import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
+import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
 /// The dashboard of a Regular-income Space (spec 4.7).
@@ -107,6 +108,7 @@ class _PeriodBody extends ConsumerWidget {
       children: <Widget>[
         const PeriodSelector(),
         const SizedBox(height: SageSpace.sm),
+        FreezeBanner(period: ledger.period),
         if (!ledger.isComputable)
           _FloatingAnchorCard(ledger: ledger, money: money)
         else ...<Widget>[

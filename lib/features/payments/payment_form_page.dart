@@ -14,11 +14,16 @@ import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
+import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 import 'package:sielto/features/payments/recurrence.dart';
 import 'package:sielto/features/payments/series_scope_dialog.dart';
+import 'package:sielto/features/periods/freeze_providers.dart';
+import 'package:sielto/features/periods/freeze_ui.dart';
+import 'package:sielto/features/periods/period_choice.dart';
+import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// Opens the payment form. With no [paymentId] it is a new record.
@@ -87,6 +92,9 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _notes = TextEditingController();
 
+  /// What a frozen record's note gains. The existing text is never touched.
+  final TextEditingController _addedNote = TextEditingController();
+
   CalendarDate? _date;
   ExpenseType _type = ExpenseType.variable;
   String? _categoryId;
@@ -100,6 +108,22 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   Payment? _existing;
   bool _loaded = false;
   bool _saving = false;
+
+  /// The state of the record's period. A frozen one leaves the category and
+  /// an appended note editable and nothing else (spec 5.5).
+  FreezeState _freeze = FreezeState.open;
+
+  bool get _isFrozen => _freeze == FreezeState.frozen;
+
+  /// Which cycle the payment is filed under (spec 5.3). Only meaningful in an
+  /// income-driven Space, and the form hides it everywhere else.
+  PeriodChoice _periodChoice = PeriodChoice.byDate;
+  PeriodChoice _loadedPeriodChoice = PeriodChoice.byDate;
+
+  /// The two cycles the choice picks between, resolved from the date on the
+  /// form rather than from today.
+  PeriodPair get _periods =>
+      periodsAround(ref.read(incomePeriodsProvider), _date!);
 
   @override
   void initState() {
@@ -118,6 +142,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     _title.dispose();
     _amount.dispose();
     _notes.dispose();
+    _addedNote.dispose();
     super.dispose();
   }
 
@@ -139,6 +164,12 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
         _type = row.expenseType;
         _categoryId = row.categoryId;
         _isPaid = row.isPaid;
+        _freeze = ref.read(freezeLookupProvider).of(row.budgetPeriodId);
+        _periodChoice = choiceOf(
+          row,
+          periodsAround(ref.read(incomePeriodsProvider), row.dueDate),
+        );
+        _loadedPeriodChoice = _periodChoice;
       }
     } else if (draft != null) {
       _title.text = draft.title;
@@ -175,6 +206,15 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
         date.isAfter(today.addMonths(12 * 10));
   }
 
+  /// The control belongs to income-driven Spaces alone, and only where both
+  /// cycles exist to choose between. A series is filed occurrence by
+  /// occurrence, so it is not offered there either (spec 5.3).
+  bool _showPeriodChoice(Space space) =>
+      space.budgetMode == BudgetMode.incomeDriven &&
+      !_isFrozen &&
+      !_isRecurring &&
+      _periods.next != null;
+
   Future<void> _pickDate() async {
     final CalendarDate current = _date ?? ref.read(spaceClockProvider).today();
     final DateTime? picked = await showDatePicker(
@@ -195,6 +235,10 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
 
     setState(() => _saving = true);
     try {
+      if (_isFrozen) {
+        await _saveFrozen();
+        return;
+      }
       final Repositories repos = ref.read(repositoriesProvider);
       final Space space = ref.read(currentSpaceProvider)!;
       final String? notes = _notes.text.trim().isEmpty
@@ -218,7 +262,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
             notes: notes,
           );
         } else {
-          await repos.payments.create(
+          final Payment created = await repos.payments.create(
             spaceId: space.id,
             title: _title.text,
             amount: amount,
@@ -228,6 +272,9 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
             notes: notes,
             isPaid: _isPaid,
           );
+          if (_periodChoice != PeriodChoice.byDate) {
+            await _applyPeriodChoice(repos, created.id);
+          }
         }
       } else {
         final SeriesScope scope = await _resolveScope(existing);
@@ -243,6 +290,9 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
               notes: Value<String?>(notes),
               isPaid: Value<bool>(_isPaid),
             );
+            if (_periodChoice != _loadedPeriodChoice) {
+              await _applyPeriodChoice(repos, existing.id);
+            }
           case SeriesScope.allFuture:
             // The date is not written across a series: each occurrence keeps
             // its own day (spec 6.3).
@@ -272,6 +322,50 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  /// Files the payment under the cycle the user picked (spec 5.3).
+  ///
+  /// `byDate` writes the containing period back with `auto`, which is what
+  /// returns a pinned row to following its date.
+  Future<void> _applyPeriodChoice(Repositories repos, String paymentId) async {
+    final BudgetPeriod? target = _periods.forChoice(_periodChoice);
+    if (target == null) return;
+    await repos.payments.setPeriod(
+      paymentId,
+      target.id,
+      assignment: _periodChoice == PeriodChoice.byDate
+          ? PeriodAssignment.auto
+          : PeriodAssignment.manual,
+    );
+  }
+
+  /// The two writes a closed period still allows (spec 5.5).
+  ///
+  /// The note is appended with its date rather than replaced: what was written
+  /// while the period was open stays exactly as it was.
+  Future<void> _saveFrozen() async {
+    final Payment existing = _existing!;
+    final String addition = _addedNote.text.trim();
+    final Repositories repos = ref.read(repositoriesProvider);
+
+    await repos.payments.update(
+      existing.id,
+      // The title and the category are not protected: neither renaming a
+      // record nor reclassifying it changes a figure.
+      title: Value<String>(_title.text),
+      categoryId: Value<String?>(_categoryId),
+      notes: addition.isEmpty
+          ? const Value<String?>.absent()
+          : Value<String?>(
+              FreezeEvaluator.appendNote(
+                existing.notes,
+                addition,
+                ref.read(spaceClockProvider).today(),
+              ),
+            ),
+    );
+    if (mounted) Navigator.of(context).pop();
   }
 
   /// A record outside a series always edits itself; one inside asks first
@@ -312,7 +406,9 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       appBar: AppBar(
         title: Text(_existing == null ? tr('payment.add') : tr('payment.edit')),
         actions: <Widget>[
-          if (_existing != null)
+          // Deleting is a protected change, so a closed period offers no
+          // delete at all rather than one that refuses (spec 5.5).
+          if (_existing != null && !_isFrozen)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: tr('common.delete'),
@@ -323,19 +419,21 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            _LivePreview(
-              amount: _parsedAmount,
-              date: _date,
-              replacingId: _existing?.id,
-              isRecurring: _isRecurring && _existing == null,
-              occurrences: _occurrences,
-              interval: _interval,
-              money: money,
-            ),
+            if (!_isFrozen)
+              _LivePreview(
+                amount: _parsedAmount,
+                date: _date,
+                replacingId: _existing?.id,
+                isRecurring: _isRecurring && _existing == null,
+                occurrences: _occurrences,
+                interval: _interval,
+                money: money,
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(SageSpace.formGutter),
                 children: <Widget>[
+                  if (_isFrozen) const FreezeNotice(),
                   LabelledField(
                     label: tr('payment.fieldTitle'),
                     child: TextField(
@@ -349,6 +447,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                     label: tr('payment.fieldAmount'),
                     child: TextField(
                       controller: _amount,
+                      enabled: !_isFrozen,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -364,7 +463,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                     child: _DateField(
                       date: _date!,
                       labels: DateLabels(locale),
-                      onTap: _pickDate,
+                      onTap: _isFrozen ? null : _pickDate,
                       warn: _dateLooksOdd,
                     ),
                   ),
@@ -398,8 +497,31 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                       selected: _type,
                       labelOf: (ExpenseType t) => tr('expenseType.${t.name}'),
                       onChanged: (ExpenseType t) => setState(() => _type = t),
+                      enabled: !_isFrozen,
                     ),
                   ),
+                  if (_showPeriodChoice(space)) ...<Widget>[
+                    const SizedBox(height: SageSpace.lg),
+                    LabelledField(
+                      label: tr('payment.fieldPeriod'),
+                      child: SegmentedChoice<PeriodChoice>(
+                        values: PeriodChoice.values,
+                        selected: _periodChoice,
+                        labelOf: (PeriodChoice c) => switch (c) {
+                          PeriodChoice.byDate => tr('payment.periodAuto'),
+                          PeriodChoice.current => tr('payment.periodCurrent'),
+                          PeriodChoice.next => tr('payment.periodNext'),
+                        },
+                        onChanged: (PeriodChoice c) =>
+                            setState(() => _periodChoice = c),
+                      ),
+                    ),
+                    const SizedBox(height: SageSpace.xs),
+                    Text(
+                      tr('payment.periodHint'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                   if (_existing == null) ...<Widget>[
                     const SizedBox(height: SageSpace.lg),
                     _RecurrenceFields(
@@ -415,20 +537,28 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                     ),
                   ],
                   const SizedBox(height: SageSpace.lg),
-                  LabelledField(
-                    label: tr('payment.fieldNotes'),
-                    child: TextField(
-                      controller: _notes,
-                      maxLines: 3,
-                      maxLength: 5000,
-                      textCapitalization: TextCapitalization.sentences,
+                  if (_isFrozen)
+                    _AppendNoteField(
+                      existing: _existing?.notes,
+                      controller: _addedNote,
+                    )
+                  else
+                    LabelledField(
+                      label: tr('payment.fieldNotes'),
+                      child: TextField(
+                        controller: _notes,
+                        maxLines: 3,
+                        maxLength: 5000,
+                        textCapitalization: TextCapitalization.sentences,
+                      ),
                     ),
-                  ),
                   SwitchListTile.adaptive(
                     value: _isPaid,
                     contentPadding: EdgeInsets.zero,
                     title: Text(tr('payment.markPaid')),
-                    onChanged: (bool value) => setState(() => _isPaid = value),
+                    onChanged: _isFrozen
+                        ? null
+                        : (bool value) => setState(() => _isPaid = value),
                   ),
                   const SizedBox(height: SageSpace.lg),
                   FilledButton(
@@ -575,6 +705,44 @@ class _LivePreview extends ConsumerWidget {
   }
 }
 
+/// The note of a record in a closed period: what is there, and a field that
+/// adds to it (spec 5.5).
+class _AppendNoteField extends StatelessWidget {
+  const _AppendNoteField({required this.existing, required this.controller});
+
+  final String? existing;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      if (existing != null && existing!.trim().isNotEmpty) ...<Widget>[
+        LabelledField(
+          label: tr('payment.fieldNotes'),
+          child: SageCard(
+            child: Text(
+              existing!,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ),
+        const SizedBox(height: SageSpace.lg),
+      ],
+      LabelledField(
+        label: tr('freeze.addNote'),
+        child: TextField(
+          controller: controller,
+          maxLines: 3,
+          maxLength: 5000,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(hintText: tr('freeze.addNoteHint')),
+        ),
+      ),
+    ],
+  );
+}
+
 class _DateField extends StatelessWidget {
   const _DateField({
     required this.date,
@@ -585,7 +753,11 @@ class _DateField extends StatelessWidget {
 
   final CalendarDate date;
   final DateLabels labels;
-  final VoidCallback onTap;
+
+  /// Null when the period is closed: the field reads, it does not open a
+  /// picker (spec 5.5).
+  final VoidCallback? onTap;
+
   final bool warn;
 
   @override

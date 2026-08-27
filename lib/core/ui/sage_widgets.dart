@@ -11,6 +11,7 @@ class SageCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(SageSpace.gutter),
     this.onTap,
     this.selected = false,
+    this.color,
     super.key,
   });
 
@@ -21,12 +22,15 @@ class SageCard extends StatelessWidget {
   /// Selected cards sit on `accentTint` rather than gaining a border.
   final bool selected;
 
+  /// Overrides the card ground, for the few cards that carry a status tint.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final Widget body = Padding(padding: padding, child: child);
     return Card(
-      color: selected ? sage.accentTint : sage.card,
+      color: color ?? (selected ? sage.accentTint : sage.card),
       child: onTap == null
           ? body
           : InkWell(
@@ -78,6 +82,7 @@ class SegmentedChoice<T> extends StatelessWidget {
     required this.selected,
     required this.labelOf,
     required this.onChanged,
+    this.enabled = true,
     super.key,
   });
 
@@ -85,6 +90,9 @@ class SegmentedChoice<T> extends StatelessWidget {
   final T selected;
   final String Function(T value) labelOf;
   final ValueChanged<T> onChanged;
+
+  /// A disabled row still shows which value is set: read-only, not hidden.
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +111,7 @@ class SegmentedChoice<T> extends StatelessWidget {
               child: _Segment<T>(
                 label: labelOf(value),
                 isSelected: value == selected,
-                onTap: () => onChanged(value),
+                onTap: enabled ? () => onChanged(value) : null,
               ),
             ),
         ],
@@ -121,7 +129,7 @@ class _Segment<T> extends StatelessWidget {
 
   final String label;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

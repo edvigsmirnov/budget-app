@@ -15,6 +15,7 @@ import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_reorder.dart';
@@ -22,7 +23,10 @@ import 'package:sielto/features/feed/feed_row.dart';
 import 'package:sielto/features/feed/feed_window.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
+import 'package:sielto/features/periods/freeze_providers.dart';
+import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/shell/app_header.dart';
+import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// The chronological list of payments and incomes (spec 4.5).
@@ -55,8 +59,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   /// Widens the visible window as the user reaches either end (spec 4.5).
+  ///
+  /// Income-driven mode has no window to widen: the list is one cycle, and the
+  /// arrows above it move between cycles instead.
   void _extendOnEdge() {
     if (!_scroll.hasClients) return;
+    if (ref.read(currentSpaceProvider)?.budgetMode == BudgetMode.incomeDriven) {
+      return;
+    }
     final ScrollPosition position = _scroll.position;
     const double margin = 400;
     if (position.pixels <= position.minScrollExtent + margin) {
@@ -69,9 +79,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   @override
   Widget build(BuildContext context) {
     final Space space = ref.space;
-    final AsyncValue<FlowLedger> ledger = ref.watch(flowLedgerProvider);
-    final AsyncValue<List<Payment>> payments = ref.watch(spacePaymentsProvider);
-    final AsyncValue<List<Income>> incomes = ref.watch(spaceIncomesProvider);
     final AsyncValue<Map<String, Category>> categories = ref.watch(
       categoryIndexProvider,
     );
@@ -82,11 +89,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       currencyCode: space.currencyCode,
     );
 
-    final FlowLedger? flow = ledger.value;
-    final List<Payment>? paymentRows = payments.value;
-    final List<Income>? incomeRows = incomes.value;
-
-    if (flow == null || paymentRows == null || incomeRows == null) {
+    final _FeedSource? source = _source(space);
+    if (source == null) {
       return Scaffold(
         backgroundColor: context.sage.surface,
         appBar: AppHeader(title: tr('nav.feed')),
@@ -94,62 +98,118 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       );
     }
 
-    final FeedWindow window = ref.watch(feedWindowProvider);
-    final List<FeedRecord> visible = <FeedRecord>[
-      for (final Payment p in paymentRows)
-        if (window.contains(p.dueDate)) FeedRecord.fromPayment(p),
-      for (final Income i in incomeRows)
-        if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
-    ];
-
     final List<FeedItem> items = buildFeedItems(
-      records: visible,
-      today: flow.today,
+      records: source.records,
+      today: source.today,
       orderMode: space.feedOrderMode,
-      coverage: flow.coverageByEntry,
-      cutoffEntryId: flow.cascade.all.cutoffEntryId,
+      coverage: source.coverage,
+      cutoffEntryId: source.cutoffEntryId,
     );
 
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppHeader(
         title: tr('nav.feed'),
-        bottom: _FeedTotals(ledger: flow, money: money),
+        bottom: _FeedTotals(source: source, money: money),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showQuickAddMenu(context, ref, today: flow.today),
+        onPressed: () => showQuickAddMenu(context, ref, today: source.today),
         child: const Icon(Icons.add),
       ),
-      body: items.isEmpty
-          ? EmptyState(
-              message: tr('feed.empty'),
-              action: FilledButton(
-                onPressed: () => openPaymentForm(context, date: flow.today),
-                child: Text(tr('payment.add')),
-              ),
-            )
-          : ReorderableListView.builder(
-              scrollController: _scroll,
-              buildDefaultDragHandles: false,
-              padding: const EdgeInsets.only(bottom: 96),
-              itemCount: items.length,
-              itemBuilder: (BuildContext context, int index) => _buildItem(
-                context,
-                items[index],
-                index: index,
-                density: density,
-                money: money,
-                locale: locale,
-                today: flow.today,
-                categories: categories.value ?? const <String, Category>{},
-              ),
-              onReorderItem: (int oldIndex, int newIndex) => _onReorder(
-                items: items,
-                oldIndex: oldIndex,
-                insertAt: newIndex,
-                orderMode: space.feedOrderMode,
-              ),
-            ),
+      body: Column(
+        children: <Widget>[
+          // The same selection the Dashboard shows, so paging on one screen
+          // moves the other (spec 4.3).
+          if (source.byPeriod) const PeriodSelector(),
+          Expanded(
+            child: items.isEmpty
+                ? EmptyState(
+                    message: tr('feed.empty'),
+                    action: FilledButton(
+                      onPressed: () =>
+                          openPaymentForm(context, date: source.today),
+                      child: Text(tr('payment.add')),
+                    ),
+                  )
+                : ReorderableListView.builder(
+                    scrollController: _scroll,
+                    buildDefaultDragHandles: false,
+                    padding: const EdgeInsets.only(bottom: 96),
+                    itemCount: items.length,
+                    itemBuilder: (BuildContext context, int index) =>
+                        _buildItem(
+                          context,
+                          items[index],
+                          index: index,
+                          density: density,
+                          money: money,
+                          locale: locale,
+                          today: source.today,
+                          categories:
+                              categories.value ?? const <String, Category>{},
+                          freeze: ref.watch(freezeLookupProvider),
+                        ),
+                    onReorderItem: (int oldIndex, int newIndex) => _onReorder(
+                      items: items,
+                      oldIndex: oldIndex,
+                      insertAt: newIndex,
+                      orderMode: space.feedOrderMode,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// What the list draws, and the two figures above it.
+  ///
+  /// Flow walks the whole forward ledger and the window decides what is drawn;
+  /// income-driven mode draws one cycle, because the cycle is the context its
+  /// figures are computed in (spec 4.3, 4.5). Null while either is loading.
+  _FeedSource? _source(Space space) {
+    final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
+    final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
+    if (payments == null || incomes == null) return null;
+
+    if (space.budgetMode == BudgetMode.incomeDriven) {
+      final PeriodLedger? ledger = ref.watch(periodLedgerProvider).value;
+      if (ledger == null) return null;
+      final String periodId = ledger.period.id;
+      return _FeedSource(
+        records: <FeedRecord>[
+          for (final Payment p in payments)
+            if (p.budgetPeriodId == periodId) FeedRecord.fromPayment(p),
+          for (final Income i in incomes)
+            if (i.budgetPeriodId == periodId) FeedRecord.fromIncome(i),
+        ],
+        today: ledger.today,
+        coverage: ledger.coverageByEntry,
+        cutoffEntryId: ledger.cascade?.all.cutoffEntryId,
+        // Null when the anchor income has no amount yet. The figures say so
+        // rather than showing a zero (spec 4.7).
+        available: ledger.anchorAmount,
+        freeCash: ledger.freeCash,
+        byPeriod: true,
+      );
+    }
+
+    final FlowLedger? flow = ref.watch(flowLedgerProvider).value;
+    if (flow == null) return null;
+    final FeedWindow window = ref.watch(feedWindowProvider);
+    return _FeedSource(
+      records: <FeedRecord>[
+        for (final Payment p in payments)
+          if (window.contains(p.dueDate)) FeedRecord.fromPayment(p),
+        for (final Income i in incomes)
+          if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
+      ],
+      today: flow.today,
+      coverage: flow.coverageByEntry,
+      cutoffEntryId: flow.cascade.all.cutoffEntryId,
+      available: flow.available,
+      freeCash: flow.freeCash,
+      byPeriod: false,
     );
   }
 
@@ -162,6 +222,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     required String locale,
     required CalendarDate today,
     required Map<String, Category> categories,
+    required FreezeLookup freeze,
   }) {
     switch (item) {
       case FeedHeader():
@@ -187,6 +248,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           onTap: () => _edit(record),
           onTogglePaid: () => _togglePaid(record),
           onDelete: () => _delete(record),
+          isFrozen: freeze.isFrozen(record.budgetPeriodId),
           onLongPress: () =>
               showRecordMenu(context, ref, record: record, today: today),
           dragHandle: ReorderableDragStartListener(
@@ -218,6 +280,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     if (!next && record.isMandatory && !await confirmMandatory(context)) {
       return;
     }
+    if (!mounted) return;
 
     if (record.isIncome) {
       if (next && record.amount == null) {
@@ -228,23 +291,30 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         }
         return;
       }
-      await repos.incomes.update(record.id, isPaid: Value<bool>(next));
+      await guardFreeze(
+        context,
+        () => repos.incomes.update(record.id, isPaid: Value<bool>(next)),
+      );
       return;
     }
-    await repos.payments.setPaid(record.id, isPaid: next);
+    await guardFreeze(
+      context,
+      () => repos.payments.setPaid(record.id, isPaid: next),
+    );
   }
 
   Future<void> _delete(FeedRecord record) async {
     if (record.isMandatory && !await confirmMandatory(context)) return;
+    if (!mounted) return;
     final Repositories repos = ref.read(repositoriesProvider);
 
-    if (record.isIncome) {
-      await repos.incomes.softDelete(record.id);
-    } else {
-      await repos.payments.softDelete(record.id);
-    }
-
-    if (!mounted) return;
+    final bool deleted = await guardFreeze(
+      context,
+      () => record.isIncome
+          ? repos.incomes.softDelete(record.id)
+          : repos.payments.softDelete(record.id),
+    );
+    if (!deleted || !mounted) return;
     showUndoSnackbar(
       context,
       message: tr(
@@ -319,23 +389,59 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             .where((FeedRow r) => r.record.id == id)
             .firstOrNull;
         if (row == null) return;
-        if (row.record.isIncome) {
-          await repos.incomes.update(
-            id,
-            expectedDate: Value<CalendarDate>(date),
-          );
-        } else {
-          await repos.payments.update(id, dueDate: Value<CalendarDate>(date));
-        }
+        if (!mounted) return;
+        await guardFreeze(
+          context,
+          () => row.record.isIncome
+              ? repos.incomes.update(
+                  id,
+                  expectedDate: Value<CalendarDate>(date),
+                )
+              : repos.payments.update(id, dueDate: Value<CalendarDate>(date)),
+        );
     }
   }
 }
 
+/// What the Feed draws, whichever mode produced it.
+///
+/// The two modes disagree about which records belong on screen and about what
+/// the starting sum is, and about nothing else; collapsing that disagreement
+/// here keeps one list, one reorder path and one row widget.
+@immutable
+class _FeedSource {
+  const _FeedSource({
+    required this.records,
+    required this.today,
+    required this.coverage,
+    required this.cutoffEntryId,
+    required this.available,
+    required this.freeCash,
+    required this.byPeriod,
+  });
+
+  final List<FeedRecord> records;
+  final CalendarDate today;
+  final Map<String, bool> coverage;
+
+  /// The row the money runs out on, or null when it covers everything.
+  final String? cutoffEntryId;
+
+  /// The sum the walk started from. Null when it is not known — an anchor
+  /// income with no amount yet (spec 4.7).
+  final Decimal? available;
+
+  /// Null when the plan is not covered, or when [available] is unknown.
+  final Decimal? freeCash;
+
+  final bool byPeriod;
+}
+
 /// Income and Free money for the current context, above the list (spec 4.5).
 class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
-  const _FeedTotals({required this.ledger, required this.money});
+  const _FeedTotals({required this.source, required this.money});
 
-  final FlowLedger ledger;
+  final _FeedSource source;
   final MoneyFormat money;
 
   @override
@@ -343,7 +449,9 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Decimal? free = ledger.freeCash;
+    final Decimal? available = source.available;
+    final Decimal? free = source.freeCash;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         SageSpace.gutter,
@@ -354,18 +462,29 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
       child: Row(
         children: <Widget>[
           Expanded(
-            child: _TotalBlock(
-              label: tr('feed.currentMoney'),
-              value: ledger.available,
-              money: money,
-            ),
+            child: available == null
+                ? StatColumn(
+                    label: tr('feed.periodMoney'),
+                    value: tr('income.amountUnknown'),
+                  )
+                : _TotalBlock(
+                    label: source.byPeriod
+                        ? tr('feed.periodMoney')
+                        : tr('feed.currentMoney'),
+                    value: available,
+                    money: money,
+                  ),
           ),
           Expanded(
             child: free == null
                 ? StatColumn(
                     label: tr('dashboard.freeMoney'),
-                    value: tr('dashboard.notCovered'),
-                    valueColor: context.sage.danger,
+                    // Not covered and not computable are different answers,
+                    // and only one of them is red.
+                    value: available == null
+                        ? tr('income.amountUnknown')
+                        : tr('dashboard.notCovered'),
+                    valueColor: available == null ? null : context.sage.danger,
                   )
                 : _TotalBlock(
                     label: tr('dashboard.freeMoney'),

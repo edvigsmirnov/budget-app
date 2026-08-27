@@ -11,10 +11,13 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/income_scope_dialog.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
+import 'package:sielto/features/periods/freeze_providers.dart';
+import 'package:sielto/features/periods/freeze_ui.dart';
 
 /// Opens the income form (spec 5.1, 5.4).
 ///
@@ -47,6 +50,9 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _notes = TextEditingController();
 
+  /// What a frozen occurrence's note gains. The existing text stays as it is.
+  final TextEditingController _addedNote = TextEditingController();
+
   CalendarDate? _date;
   bool _isReceived = false;
 
@@ -65,6 +71,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   bool _loaded = false;
   bool _saving = false;
 
+  /// The state of the occurrence's period. Amount, both dates and the receipt
+  /// flag are read-only once it has closed (spec 5.5).
+  FreezeState _freeze = FreezeState.open;
+
+  bool get _isFrozen => _freeze == FreezeState.frozen;
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +94,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     _title.dispose();
     _amount.dispose();
     _notes.dispose();
+    _addedNote.dispose();
     super.dispose();
   }
 
@@ -101,6 +114,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         _date = row.expectedDate;
         _isReceived = row.isPaid;
         _actualDate = row.actualDate ?? row.expectedDate;
+        _freeze = ref.read(freezeLookupProvider).of(row.budgetPeriodId);
       }
     } else if (space.budgetMode == BudgetMode.incomeDriven) {
       // The first regular income of the Space becomes the anchor with no
@@ -147,7 +161,9 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
           : _notes.text.trim();
       final Income? existing = _existing;
 
-      if (existing != null) {
+      if (existing != null && _isFrozen) {
+        await _saveFrozen(existing, repos);
+      } else if (existing != null) {
         await _saveExisting(existing, repos, date, notes);
       } else if (_isRegular) {
         await _createRule(space, repos);
@@ -211,6 +227,25 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         mode: space.budgetMode,
       );
     }
+  }
+
+  /// The two writes a closed period still allows (spec 5.5): the title, and a
+  /// note appended below what is already there.
+  Future<void> _saveFrozen(Income existing, Repositories repos) async {
+    final String addition = _addedNote.text.trim();
+    await repos.incomes.update(
+      existing.id,
+      title: Value<String>(_title.text),
+      notes: addition.isEmpty
+          ? const Value<String?>.absent()
+          : Value<String?>(
+              FreezeEvaluator.appendNote(
+                existing.notes,
+                addition,
+                ref.read(spaceClockProvider).today(),
+              ),
+            ),
+    );
   }
 
   /// Editing one materialised occurrence.
@@ -305,7 +340,9 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       appBar: AppBar(
         title: Text(isOccurrence ? tr('income.edit') : tr('income.add')),
         actions: <Widget>[
-          if (isOccurrence)
+          // Deleting is protected, so a closed period offers no delete rather
+          // than one that refuses (spec 5.5).
+          if (isOccurrence && !_isFrozen)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: tr('common.delete'),
@@ -317,6 +354,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
           children: <Widget>[
+            if (_isFrozen) const FreezeNotice(),
             if (partOfSeries)
               Padding(
                 padding: const EdgeInsets.only(bottom: SageSpace.md),
@@ -351,6 +389,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               label: tr('income.fieldAmount'),
               child: TextField(
                 controller: _amount,
+                enabled: !_isFrozen,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -372,7 +411,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                 label: tr('income.fieldDate'),
                 child: _DateField(
                   label: dates.dayMonth(_date!),
-                  onTap: () => _pickDate(actual: false),
+                  onTap: _isFrozen ? null : () => _pickDate(actual: false),
                 ),
               ),
               const SizedBox(height: SageSpace.lg),
@@ -423,14 +462,20 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               const SizedBox(height: SageSpace.lg),
             ],
 
-            LabelledField(
-              label: tr('income.fieldNotes'),
-              child: TextField(
-                controller: _notes,
-                maxLines: 3,
-                maxLength: 5000,
+            if (_isFrozen)
+              _AppendNoteField(
+                existing: _existing?.notes,
+                controller: _addedNote,
+              )
+            else
+              LabelledField(
+                label: tr('income.fieldNotes'),
+                child: TextField(
+                  controller: _notes,
+                  maxLines: 3,
+                  maxLength: 5000,
+                ),
               ),
-            ),
 
             if (!_isRegular) ...<Widget>[
               SwitchListTile.adaptive(
@@ -443,10 +488,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                         style: TextStyle(color: context.sage.danger),
                       )
                     : null,
-                onChanged: (bool value) => setState(() {
-                  _isReceived = value;
-                  _actualDate ??= _date;
-                }),
+                onChanged: _isFrozen
+                    ? null
+                    : (bool value) => setState(() {
+                        _isReceived = value;
+                        _actualDate ??= _date;
+                      }),
               ),
               // The date the money actually arrived, which the expected date
               // is not for. It changes no calculation (spec 5.4).
@@ -456,7 +503,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                   label: tr('income.fieldActualDate'),
                   child: _DateField(
                     label: dates.dayMonth(_actualDate ?? _date!),
-                    onTap: () => _pickDate(actual: true),
+                    onTap: _isFrozen ? null : () => _pickDate(actual: true),
                   ),
                 ),
                 if (_actualDate != null && _actualDate != _date)
@@ -482,11 +529,52 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   }
 }
 
+/// The note of an occurrence in a closed period: what is there, and a field
+/// that adds to it (spec 5.5).
+class _AppendNoteField extends StatelessWidget {
+  const _AppendNoteField({required this.existing, required this.controller});
+
+  final String? existing;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      if (existing != null && existing!.trim().isNotEmpty) ...<Widget>[
+        LabelledField(
+          label: tr('income.fieldNotes'),
+          child: SageCard(
+            child: Text(
+              existing!,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ),
+        const SizedBox(height: SageSpace.lg),
+      ],
+      LabelledField(
+        label: tr('freeze.addNote'),
+        child: TextField(
+          controller: controller,
+          maxLines: 3,
+          maxLength: 5000,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(hintText: tr('freeze.addNoteHint')),
+        ),
+      ),
+    ],
+  );
+}
+
 class _DateField extends StatelessWidget {
   const _DateField({required this.label, required this.onTap});
 
   final String label;
-  final VoidCallback onTap;
+
+  /// Null when the period is closed: the field reads, it does not open a
+  /// picker (spec 5.5).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
