@@ -85,7 +85,8 @@
     "archive": "Archive Space",
     "archiveTitle": "Archive this Space?",
     "archiveConfirm": "\"{title}\" disappears from the switcher. Its records stay on this device and nothing is deleted.",
-    "archiveBody": "Archiving hides the Space without deleting anything."
+    "archiveBody": "Archiving hides the Space without deleting anything.",
+    "search": "Search Spaces"
   },
   "spaceSettings": {
     "title": "Space settings"
@@ -101,7 +102,8 @@
     "feedDensity": "Feed density",
     "language": "Language",
     "data": "Data",
-    "spaces": "Spaces"
+    "spaces": "Spaces",
+    "accountSettings": "Account settings"
   },
   "dashboard": {
     "freeMoney": "Free money",

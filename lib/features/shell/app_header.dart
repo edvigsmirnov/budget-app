@@ -5,6 +5,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
+import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
 /// The header the three main screens share (spec 4.2).
 ///
@@ -40,7 +41,27 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
           ),
         ),
       ),
-      title: Text(title, overflow: TextOverflow.ellipsis),
+      // Tapping the Space name opens the switcher. The spec names this as
+      // the required alternate to the swipe-up gesture, which lands in M10
+      // (spec 3.1).
+      title: InkWell(
+        onTap: () => showSpaceSwitcher(context),
+        borderRadius: BorderRadius.circular(SageRadius.chip),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: SageSpace.sm,
+            vertical: SageSpace.xs,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Flexible(child: Text(title, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: SageSpace.xs),
+              Icon(Icons.expand_more, size: 18, color: sage.inkLabel),
+            ],
+          ),
+        ),
+      ),
       actions: <Widget>[
         ...?trailing,
         IconButton(

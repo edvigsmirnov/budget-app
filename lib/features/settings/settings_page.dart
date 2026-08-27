@@ -8,7 +8,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/categories_page.dart';
-import 'package:sielto/features/spaces/spaces_page.dart';
+import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
 /// Profile and app settings (spec 4.2).
 ///
@@ -86,11 +86,7 @@ class SettingsPage extends ConsumerWidget {
             leading: const Icon(Icons.dashboard_outlined),
             title: Text(tr('settings.spaces')),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const SpacesPage(),
-              ),
-            ),
+            onTap: () => showSpaceSwitcher(context),
           ),
           ListTile(
             leading: const Icon(Icons.label_outline),
