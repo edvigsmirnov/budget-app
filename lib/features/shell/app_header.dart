@@ -57,7 +57,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
             children: <Widget>[
               Flexible(child: Text(title, overflow: TextOverflow.ellipsis)),
               const SizedBox(width: SageSpace.xs),
-              Icon(Icons.expand_more, size: 18, color: sage.inkLabel),
+              Icon(Icons.expand_more, size: 20, color: sage.inkLabel),
             ],
           ),
         ),

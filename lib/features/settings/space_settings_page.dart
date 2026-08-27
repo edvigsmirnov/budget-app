@@ -102,7 +102,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                   ),
                   Icon(
                     Icons.lock_outline,
-                    size: 16,
+                    size: 18,
                     color: context.sage.inkLabel,
                   ),
                 ],

@@ -671,7 +671,7 @@ class _LivePreview extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
                 child: Icon(
                   Icons.arrow_forward,
-                  size: 14,
+                  size: 16,
                   color: sage.inkLabel,
                 ),
               ),
@@ -781,7 +781,7 @@ class _DateField extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
             ),
-            Icon(Icons.calendar_today_outlined, size: 16, color: sage.inkLabel),
+            Icon(Icons.calendar_today_outlined, size: 18, color: sage.inkLabel),
           ],
         ),
       ),

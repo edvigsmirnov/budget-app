@@ -89,7 +89,7 @@ class ScheduleEditor extends StatelessWidget {
                   draft.type == type
                       ? Icons.radio_button_checked
                       : Icons.radio_button_off,
-                  size: 18,
+                  size: 20,
                   color: draft.type == type
                       ? context.sage.accentStrong
                       : context.sage.inkLabel,

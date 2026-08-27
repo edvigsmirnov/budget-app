@@ -26,8 +26,8 @@ class WelcomePage extends StatelessWidget {
             children: <Widget>[
               const Spacer(),
               Container(
-                width: 84,
-                height: 84,
+                width: 100,
+                height: 100,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: sage.accentTintAlt,
@@ -40,7 +40,7 @@ class WelcomePage extends StatelessWidget {
                   'S',
                   style: text.displaySmall?.copyWith(
                     color: sage.accentStrong,
-                    fontSize: 34,
+                    fontSize: 40,
                   ),
                 ),
               ),
@@ -48,7 +48,7 @@ class WelcomePage extends StatelessWidget {
               Text(
                 'Sielto',
                 style: text.displaySmall?.copyWith(
-                  fontSize: 26,
+                  fontSize: 30,
                   color: sage.inkHeading,
                   letterSpacing: -0.4,
                 ),

@@ -363,7 +363,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                     children: <Widget>[
                       Icon(
                         Icons.repeat,
-                        size: 16,
+                        size: 18,
                         color: context.sage.inkLabel,
                       ),
                       const SizedBox(width: SageSpace.sm),
@@ -594,7 +594,7 @@ class _DateField extends StatelessWidget {
             Expanded(
               child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
             ),
-            Icon(Icons.calendar_today_outlined, size: 16, color: sage.inkLabel),
+            Icon(Icons.calendar_today_outlined, size: 18, color: sage.inkLabel),
           ],
         ),
       ),

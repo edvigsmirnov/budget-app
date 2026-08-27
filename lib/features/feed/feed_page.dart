@@ -255,7 +255,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             index: index,
             child: Icon(
               Icons.drag_indicator,
-              size: 18,
+              size: 20,
               color: context.sage.inkLabel,
             ),
           ),

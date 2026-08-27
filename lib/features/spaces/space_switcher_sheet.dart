@@ -82,7 +82,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
             if (spaces.length >= _searchThreshold) ...<Widget>[
               TextField(
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, size: 18),
+                  prefixIcon: const Icon(Icons.search, size: 20),
                   hintText: tr('space.search'),
                   isDense: true,
                 ),
@@ -108,7 +108,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(Icons.add, size: 20),
                 label: Text(tr('space.createTitle')),
                 onPressed: _createSpace,
               ),
@@ -120,7 +120,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(tr('settings.accountSettings')),
-              trailing: const Icon(Icons.chevron_right, size: 18),
+              trailing: const Icon(Icons.chevron_right, size: 20),
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
@@ -207,7 +207,7 @@ class _SpaceRow extends StatelessWidget {
             space.storageMode == StorageMode.cloud
                 ? Icons.cloud_outlined
                 : Icons.smartphone,
-            size: 13,
+            size: 15,
             color: sage.inkLabel,
           ),
         ],
@@ -234,7 +234,7 @@ class _SpaceRow extends StatelessWidget {
         children: <Widget>[
           if (coverage != null) CoverageDot(coverage!, size: 9),
           IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 18),
+            icon: const Icon(Icons.settings_outlined, size: 20),
             tooltip: tr('spaceSettings.title'),
             // Opens that Space's settings without switching to it — the second
             // of the spec's three entry points (spec 3.4).

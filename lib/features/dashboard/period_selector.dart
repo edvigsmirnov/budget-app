@@ -67,7 +67,7 @@ class PeriodSelector extends ConsumerWidget {
                       message: tr('holidays.incomplete'),
                       child: Icon(
                         Icons.cloud_off_outlined,
-                        size: 14,
+                        size: 16,
                         color: context.sage.inkLabel,
                       ),
                     ),

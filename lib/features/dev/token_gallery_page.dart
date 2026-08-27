@@ -313,7 +313,7 @@ class _Row extends StatelessWidget {
               color: paid ? c.accentStrong : Colors.transparent,
               border: paid ? null : Border.all(color: c.border, width: 1.5),
             ),
-            child: paid ? Icon(Icons.check, size: 12, color: c.accentOn) : null,
+            child: paid ? Icon(Icons.check, size: 14, color: c.accentOn) : null,
           ),
           const SizedBox(width: SageSpace.md),
           Container(

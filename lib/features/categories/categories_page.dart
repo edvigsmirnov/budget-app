@@ -139,11 +139,11 @@ class _CategoryTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18),
+            icon: const Icon(Icons.delete_outline, size: 20),
             tooltip: tr('common.delete'),
             onPressed: onDelete,
           ),
-          Icon(Icons.drag_indicator, size: 18, color: sage.inkLabel),
+          Icon(Icons.drag_indicator, size: 20, color: sage.inkLabel),
         ],
       ),
     );

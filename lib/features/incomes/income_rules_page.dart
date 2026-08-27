@@ -186,13 +186,13 @@ class _RuleTile extends StatelessWidget {
                   : tr('income.makeAnchor'),
               icon: Icon(
                 rule.isAnchor ? Icons.push_pin : Icons.push_pin_outlined,
-                size: 18,
+                size: 20,
                 color: rule.isAnchor ? sage.accentStrong : sage.inkLabel,
               ),
               onPressed: () => onToggleAnchor(!rule.isAnchor),
             ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18),
+            icon: const Icon(Icons.delete_outline, size: 20),
             tooltip: tr('common.delete'),
             onPressed: onDelete,
           ),

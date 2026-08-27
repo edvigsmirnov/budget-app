@@ -75,7 +75,7 @@ class HolidaysPage extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(SageSpace.gutter),
             child: OutlinedButton.icon(
-              icon: const Icon(Icons.add, size: 18),
+              icon: const Icon(Icons.add, size: 20),
               label: Text(tr('holidays.addDay')),
               onPressed: () => markNonWorkingDay(context, ref),
             ),
@@ -243,7 +243,7 @@ class _PublicHolidays extends ConsumerWidget {
                     dense: true,
                     leading: Icon(
                       Icons.event_busy_outlined,
-                      size: 18,
+                      size: 20,
                       color: context.sage.inkLabel,
                     ),
                     title: Text(dates.short(day)),
@@ -275,7 +275,7 @@ class _CustomDays extends ConsumerWidget {
             dense: true,
             leading: Icon(
               Icons.event_busy,
-              size: 18,
+              size: 20,
               color: context.sage.accentStrong,
             ),
             title: Text(day.title ?? dates.short(day.date)),
@@ -285,7 +285,7 @@ class _CustomDays extends ConsumerWidget {
                   : '${dates.short(day.date)} · ${dates.weekday(day.date)}',
             ),
             trailing: IconButton(
-              icon: const Icon(Icons.close, size: 18),
+              icon: const Icon(Icons.close, size: 20),
               tooltip: tr('common.delete'),
               onPressed: () async {
                 await ref.read(repositoriesProvider).customDays.remove(day.id);
@@ -385,7 +385,7 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
             const SizedBox(height: SageSpace.md),
             TextField(
               decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search, size: 18),
+                prefixIcon: const Icon(Icons.search, size: 20),
                 hintText: tr('holidays.searchCountry'),
                 isDense: true,
               ),

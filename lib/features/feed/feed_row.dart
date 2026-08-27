@@ -141,7 +141,7 @@ class FeedRowTile extends StatelessWidget {
                     padding: const EdgeInsets.only(right: SageSpace.sm),
                     child: Icon(
                       Icons.lock_outline,
-                      size: 14,
+                      size: 16,
                       color: sage.inkLabel,
                     ),
                   ),
@@ -149,7 +149,7 @@ class FeedRowTile extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: SageSpace.sm),
                     child: IconButton(
-                      icon: const Icon(Icons.sticky_note_2_outlined, size: 16),
+                      icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
                       visualDensity: VisualDensity.compact,
                       tooltip: tr('payment.note'),
                       onPressed: () => _showNote(context, record.notes!),
@@ -245,7 +245,7 @@ class _PaidCircle extends StatelessWidget {
               ),
             ),
             child: record.isPaid
-                ? Icon(Icons.check, size: 13, color: sage.accentOn)
+                ? Icon(Icons.check, size: 15, color: sage.accentOn)
                 : null,
           ),
         ),
@@ -305,7 +305,7 @@ class _SwipeAction extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(icon, size: 18, color: ink),
+          Icon(icon, size: 20, color: ink),
           const SizedBox(width: SageSpace.sm),
           Text(
             tr(labelKey),

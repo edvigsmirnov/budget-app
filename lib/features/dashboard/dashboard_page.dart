@@ -109,7 +109,7 @@ class BalanceFooter extends ConsumerWidget {
             ],
           ),
         ),
-        Icon(Icons.edit_outlined, size: 18, color: sage.inkLabel),
+        Icon(Icons.edit_outlined, size: 20, color: sage.inkLabel),
       ],
     );
   }

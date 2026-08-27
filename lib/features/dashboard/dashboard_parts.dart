@@ -274,7 +274,7 @@ class NearestIncomeCard extends StatelessWidget {
     return SageCard(
       child: Row(
         children: <Widget>[
-          Icon(Icons.south_west, size: 18, color: context.sage.accentStrong),
+          Icon(Icons.south_west, size: 20, color: context.sage.accentStrong),
           const SizedBox(width: SageSpace.md),
           Expanded(
             child: Column(

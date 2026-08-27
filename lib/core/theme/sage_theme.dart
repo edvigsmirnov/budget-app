@@ -39,10 +39,17 @@ abstract final class SageTheme {
 
     // System font throughout; the ramp is weight and size, not typeface.
     // `fontFamily` stays null so each platform uses its own face.
+    //
+    // Sized for a real device, not for the design mock. The mock draws its
+    // phone frames 300px wide against a 360-412dp screen, so its type is about
+    // three quarters of what it should be — reading its px as dp made every
+    // screen render small. The ramp below is the mock scaled by ~1.2, which
+    // lands close to the Material defaults; keep it there when translating
+    // anything else from the mock.
     final TextTheme text = TextTheme(
       // Dashboard hero figure.
       displaySmall: TextStyle(
-        fontSize: 34,
+        fontSize: 40,
         fontWeight: FontWeight.w700,
         height: 1.1,
         letterSpacing: -0.5,
@@ -50,54 +57,54 @@ abstract final class SageTheme {
       ),
       // Screen and section headings.
       titleLarge: TextStyle(
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: FontWeight.w700,
         height: 1.2,
         color: c.inkHeading,
       ),
       titleMedium: TextStyle(
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: FontWeight.w700,
         height: 1.25,
         color: c.inkHeading,
       ),
       titleSmall: TextStyle(
-        fontSize: 13,
+        fontSize: 16,
         fontWeight: FontWeight.w700,
         height: 1.3,
         color: c.ink,
       ),
       // List rows, form values.
       bodyLarge: TextStyle(
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: FontWeight.w500,
         color: c.ink,
       ),
       bodyMedium: TextStyle(
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: FontWeight.w400,
         color: c.inkSecondary,
       ),
       bodySmall: TextStyle(
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: FontWeight.w400,
         height: 1.4,
         color: c.inkSecondary,
       ),
       // Uppercase field labels: 600/10 with .04em tracking.
       labelSmall: TextStyle(
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.4,
         color: c.inkLabel,
       ),
       labelMedium: TextStyle(
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: FontWeight.w600,
         color: c.inkLabel,
       ),
       labelLarge: TextStyle(
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: FontWeight.w600,
         color: c.ink,
       ),

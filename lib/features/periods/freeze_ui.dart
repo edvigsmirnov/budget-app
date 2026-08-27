@@ -67,7 +67,7 @@ class FreezeBanner extends ConsumerWidget {
           children: <Widget>[
             Icon(
               frozen ? Icons.lock_outline : Icons.schedule,
-              size: 16,
+              size: 18,
               color: ink,
             ),
             const SizedBox(width: SageSpace.sm),
@@ -210,7 +210,7 @@ class FreezeNotice extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(Icons.lock_outline, size: 16, color: sage.inkLabel),
+            Icon(Icons.lock_outline, size: 18, color: sage.inkLabel),
             const SizedBox(width: SageSpace.sm),
             Expanded(
               child: Text(
