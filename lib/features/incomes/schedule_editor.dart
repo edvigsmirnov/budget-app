@@ -175,6 +175,15 @@ class _TypeChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// Every chip is this tall, whether its label wraps or not.
+  ///
+  /// Four alternatives of equal standing should look equal; sizing each to its
+  /// own text makes "Fixed date" look like a lesser option than "N days from
+  /// the edge" for no reason but the length of the words. Two lines of
+  /// `labelLarge` and the padding fit inside it, and a longer translation
+  /// ellipsises rather than pushing one chip out of line with the rest.
+  static const double _height = 58;
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
@@ -182,7 +191,8 @@ class _TypeChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(SageRadius.button),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        height: _height,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? sage.accentTint : sage.card,

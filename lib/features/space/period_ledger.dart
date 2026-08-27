@@ -130,7 +130,16 @@ PeriodLedger buildPeriodLedger({
 
   // Anchors that resolved to the same date merged into this one period, so
   // their amounts add (spec 4.7).
-  Decimal? anchorAmount;
+  //
+  // Two ways to end up without a figure, and they are not the same answer:
+  //
+  // - **No anchor income at all** is zero. Nothing is coming, and zero is what
+  //   that is worth; the cycle computes normally from it, and the expenses
+  //   below show as uncovered because they are.
+  // - **An anchor with no amount** is unknown. Money is coming and its size is
+  //   not known yet, so any figure would be invented — a floating salary makes
+  //   the cycle uncomputable, and that is not zero (spec 4.7).
+  Decimal anchorTotal = Decimal.zero;
   bool anchorKnown = false;
   bool anchorUnknown = false;
   for (final Income i in inflows.where(isAnchor)) {
@@ -139,11 +148,12 @@ PeriodLedger buildPeriodLedger({
       anchorUnknown = true;
       continue;
     }
-    anchorAmount = (anchorAmount ?? Decimal.zero) + amount;
+    anchorTotal += amount;
     anchorKnown = true;
   }
-  // A floating salary makes the whole figure uncomputable; it is not zero.
-  if (anchorUnknown && !anchorKnown) anchorAmount = null;
+  final Decimal? anchorAmount = (anchorUnknown && !anchorKnown)
+      ? null
+      : anchorTotal;
 
   int unknown = 0;
   final List<LedgerEntry> entries = <LedgerEntry>[

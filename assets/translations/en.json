@@ -365,9 +365,7 @@
     "noAnchorBody": "Without a regular income, Flow or Budget may suit better — but you can carry on here.",
     "amountUnknownTitle": "Income expected, amount not specified",
     "amountUnknownBody": "The expense side is fully computed. The remainder appears once the amount is known.",
-    "setAmount": "Set the amount",
-    "noIncomeTitle": "No income in this cycle",
-    "noIncomeBody": "The cycle has no income to compute from. Add one, or set a regular income under Space settings."
+    "setAmount": "Set the amount"
   },
   "holidays": {
     "addDay": "Add a date",

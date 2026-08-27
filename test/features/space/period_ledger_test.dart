@@ -119,6 +119,59 @@ void main() {
     expect(ledger.freeCash, m('2324'));
   });
 
+  group('no figure', () {
+    // Two ways to have no anchor figure, and they are different answers.
+    test('a cycle with no income at all computes from zero', () async {
+      await addSalary();
+      // Every occurrence removed: nothing is coming, and nothing is what it
+      // is worth.
+      for (final Income i in await repos.incomes.inSpace(space.id)) {
+        await repos.incomes.softDelete(i.id);
+      }
+
+      final PeriodLedger ledger = await ledgerOf(await currentPeriod());
+      expect(ledger.anchorAmount, Decimal.zero);
+      expect(ledger.isComputable, isTrue);
+      expect(ledger.freeCash, Decimal.zero);
+    });
+
+    test('an anchor with no amount stays uncomputable', () async {
+      // A floating salary: money is coming and its size is not known, so any
+      // figure would be invented (spec 4.7).
+      await repos.incomeRules.create(
+        spaceId: space.id,
+        title: 'Salary',
+        scheduleType: ScheduleType.fixedDate,
+        fixedDay: 5,
+        isAnchor: true,
+      );
+      await service.refresh(space, today);
+
+      final PeriodLedger ledger = await ledgerOf(await currentPeriod());
+      expect(ledger.anchorAmount, isNull);
+      expect(ledger.isComputable, isFalse);
+    });
+
+    test('an empty cycle still reports what it owes', () async {
+      await addSalary();
+      for (final Income i in await repos.incomes.inSpace(space.id)) {
+        await repos.incomes.softDelete(i.id);
+      }
+      await repos.payments.create(
+        spaceId: space.id,
+        title: 'Rent',
+        amount: m('900'),
+        dueDate: d('2026-03-12'),
+        expenseType: ExpenseType.mandatory,
+      );
+
+      final PeriodLedger ledger = await ledgerOf(await currentPeriod());
+      // Zero income against a real bill is not covered, and says so.
+      expect(ledger.totalPlanned, m('900'));
+      expect(ledger.freeCash, isNull);
+    });
+  });
+
   test('a payment dated outside the cycle does not count', () async {
     await addSalary();
     await repos.payments.create(
