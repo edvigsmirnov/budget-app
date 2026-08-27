@@ -100,6 +100,53 @@ class BudgetPeriodRepository
         );
   }
 
+  /// The income-driven cycles of a Space, oldest first.
+  Future<List<BudgetPeriod>> incomeDrivenIn(String spaceId) async {
+    final List<BudgetPeriod> all = await inSpace(spaceId);
+    return all
+        .where((BudgetPeriod p) => p.periodType == PeriodType.incomeDriven)
+        .toList();
+  }
+
+  Stream<List<BudgetPeriod>> watchInSpace(String spaceId) =>
+      (selectAliveInSpace(spaceId)
+            ..orderBy(<OrderClauseGenerator<$BudgetPeriodsTable>>[
+              ($BudgetPeriodsTable t) => OrderingTerm(expression: t.startDate),
+            ]))
+          .watch();
+
+  /// Moves an existing period's boundaries without replacing the row.
+  ///
+  /// In place, and that is the point: a payment pinned to a period by hand
+  /// holds the period as an object, so "I filed this under the September
+  /// salary" stays true even when that salary shifts by two days (spec 5.3).
+  Future<int> updateBoundaries(
+    String periodId, {
+    required CalendarDate startDate,
+    required CalendarDate? endDate,
+    required CalendarDate anchorDate,
+    required CalendarDate windowStart,
+    required CalendarDate windowEnd,
+    bool holidayDataIncomplete = false,
+  }) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(
+      db.budgetPeriods,
+    )..where(($BudgetPeriodsTable t) => t.id.equals(periodId))).write(
+      BudgetPeriodsCompanion(
+        startDate: Value<CalendarDate>(startDate),
+        endDate: Value<CalendarDate?>(endDate),
+        anchorDate: Value<CalendarDate?>(anchorDate),
+        windowStart: Value<CalendarDate?>(windowStart),
+        windowEnd: Value<CalendarDate?>(windowEnd),
+        holidayDataIncomplete: Value<bool>(holidayDataIncomplete),
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
+  }
+
   /// The period a date falls in. A `continuous` row has no end and always
   /// matches once it has started.
   Future<BudgetPeriod?> containing(String spaceId, CalendarDate date) async {

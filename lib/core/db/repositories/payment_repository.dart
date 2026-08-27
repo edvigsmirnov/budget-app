@@ -281,6 +281,50 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
         : base & t.dueDate.isBiggerOrEqualValue(from.toIso());
   }
 
+  /// Binds a payment to a period.
+  ///
+  /// [assignment] records *how* it was bound, which decides what a later
+  /// recompute may do: an `auto` row is rebound by date, a `manual` one holds
+  /// the period the user chose (spec 5.3).
+  Future<int> setPeriod(
+    String id,
+    String? periodId, {
+    PeriodAssignment? assignment,
+  }) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(
+      db.payments,
+    )..where(($PaymentsTable t) => t.id.equals(id))).write(
+      PaymentsCompanion(
+        budgetPeriodId: Value<String?>(periodId),
+        periodAssignment: assignment == null
+            ? const Value<PeriodAssignment>.absent()
+            : Value<PeriodAssignment>(assignment),
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
+  }
+
+  /// Every live payment bound by date rather than by hand. These are the rows
+  /// a recompute is allowed to rebind.
+  Future<List<Payment>> autoAssignedIn(String spaceId) =>
+      (selectAliveInSpace(spaceId)..where(
+            ($PaymentsTable t) =>
+                t.periodAssignment.equalsValue(PeriodAssignment.auto),
+          ))
+          .get();
+
+  /// Rows pinned to a period that no longer exists. They return to `auto`
+  /// rather than dangling (spec 5.3).
+  Future<List<Payment>> manuallyAssignedIn(String spaceId) =>
+      (selectAliveInSpace(spaceId)..where(
+            ($PaymentsTable t) =>
+                t.periodAssignment.equalsValue(PeriodAssignment.manual),
+          ))
+          .get();
+
   /// One gap past the last row of that day.
   Future<int> nextSortOrder(String spaceId, CalendarDate day) async {
     final List<Payment> rows = await onDay(spaceId, day);

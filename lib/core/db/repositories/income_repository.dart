@@ -259,6 +259,70 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     );
   }
 
+  /// The occurrences already materialised for a rule, by expected date. Used
+  /// to fill only the gaps rather than re-inserting the horizon each time.
+  Future<Set<String>> materialisedDatesFor(String ruleId) async {
+    final List<Income> rows = await forRule(ruleId);
+    return <String>{for (final Income i in rows) i.expectedDate.toIso()};
+  }
+
+  Future<int> setPeriod(String id, String? periodId) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(
+      db.incomes,
+    )..where(($IncomesTable t) => t.id.equals(id))).write(
+      IncomesCompanion(
+        budgetPeriodId: Value<String?>(periodId),
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
+  }
+
+  /// Rewrites the planned amount of every future occurrence of a rule.
+  ///
+  /// Received rows are skipped: money already in hand is a fact, and a change
+  /// to what the salary will be from now on must not rewrite it (spec 5.4).
+  Future<int> updateFutureAmounts(String ruleId, Decimal? amount) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(db.incomes)..where(
+          ($IncomesTable t) =>
+              t.recurrenceRuleId.equals(ruleId) &
+              t.isPaid.equals(false) &
+              t.isDeleted.equals(false),
+        ))
+        .write(
+          IncomesCompanion(
+            amount: Value<Decimal?>(amount),
+            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+            lastModifiedBy: Value<String?>(s.author),
+            clientEditedAt: Value<DateTime>(s.editedAt),
+          ),
+        );
+  }
+
+  /// Drops unreceived future occurrences of a rule, so a schedule change can
+  /// re-materialise them on the new dates. Received rows stay untouched.
+  Future<int> clearFutureOccurrences(String ruleId, CalendarDate from) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(db.incomes)..where(
+          ($IncomesTable t) =>
+              t.recurrenceRuleId.equals(ruleId) &
+              t.isPaid.equals(false) &
+              t.isDeleted.equals(false) &
+              t.expectedDate.isBiggerOrEqualValue(from.toIso()),
+        ))
+        .write(
+          IncomesCompanion(
+            isDeleted: const Value<bool>(true),
+            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+            lastModifiedBy: Value<String?>(s.author),
+            clientEditedAt: Value<DateTime>(s.editedAt),
+          ),
+        );
+  }
+
   /// Manual position within the day, set by a drag in the Feed.
   Future<int> setSortOrder(String id, int sortOrder) {
     final ({String author, DateTime editedAt}) s = stamp();
