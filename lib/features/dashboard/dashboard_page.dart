@@ -7,80 +7,70 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
-import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/balance_sheet.dart';
+import 'package:sielto/features/dashboard/dashboard_parts.dart';
+import 'package:sielto/features/dashboard/flow_dashboard.dart';
+import 'package:sielto/features/dashboard/period_dashboard.dart';
 import 'package:sielto/features/shell/app_header.dart';
-import 'package:sielto/features/space/space_ledger.dart';
 
 /// Aggregated figures for the current context — no individual records
-/// (spec 4.4). Flow has one continuous context, so there are no period arrows.
+/// (spec 4.4).
+///
+/// The three modes disagree about what the available sum is and where the
+/// period ends, and about nothing else; that disagreement is the whole of the
+/// branch below.
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final Space space = ref.space;
-    final AsyncValue<FlowLedger> ledger = ref.watch(flowLedgerProvider);
 
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppHeader(title: space.title),
-      body: ledger.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object e, StackTrace _) =>
-            EmptyState(message: tr('common.loadFailed')),
-        data: (FlowLedger data) => _DashboardBody(space: space, ledger: data),
+      body: Column(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              SageSpace.gutter,
+              0,
+              SageSpace.gutter,
+              SageSpace.sm,
+            ),
+            child: ModeBadge(tr('mode.${space.budgetMode.name}.name')),
+          ),
+          Expanded(
+            child: switch (space.budgetMode) {
+              BudgetMode.flow => FlowDashboardBody(space: space),
+              BudgetMode.incomeDriven => PeriodDashboardBody(space: space),
+              // Budget mode is M5; until then its Spaces show the Flow view,
+              // which at least computes honestly from what has been entered.
+              BudgetMode.budget => FlowDashboardBody(space: space),
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _DashboardBody extends ConsumerWidget {
-  const _DashboardBody({required this.space, required this.ledger});
-
-  final Space space;
-  final FlowLedger ledger;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final String locale = context.locale.toString();
-    final MoneyFormat money = MoneyFormat(
-      locale: locale,
-      currencyCode: space.currencyCode,
-    );
-    final DateLabels dates = DateLabels(locale);
-
-    return ListView(
-      padding: const EdgeInsets.all(SageSpace.gutter),
-      children: <Widget>[
-        _MainFigure(space: space, ledger: ledger, money: money, dates: dates),
-        const SizedBox(height: SageSpace.md),
-        _CascadeCard(ledger: ledger, money: money),
-        const SizedBox(height: SageSpace.md),
-        _TotalsCard(ledger: ledger, money: money),
-        const SizedBox(height: SageSpace.md),
-        _NearestIncomeCard(ledger: ledger, money: money, dates: dates),
-      ],
-    );
-  }
-}
-
-/// The hero figure and the balance it is computed from (spec 4.6).
-///
-/// While everything is covered this is Free Money. Once it is not, the useful
-/// answer is a date rather than a number — how far the money reaches.
-class _MainFigure extends ConsumerWidget {
-  const _MainFigure({
+/// The balance snapshot Flow puts under its main figure (spec 4.6).
+class BalanceFooter extends ConsumerWidget {
+  const BalanceFooter({
     required this.space,
-    required this.ledger,
+    required this.available,
+    required this.excludedCount,
     required this.money,
     required this.dates,
+    super.key,
   });
 
   final Space space;
-  final FlowLedger ledger;
+  final Decimal available;
+  final int excludedCount;
   final MoneyFormat money;
   final DateLabels dates;
 
@@ -88,270 +78,47 @@ class _MainFigure extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final Decimal? free = ledger.freeCash;
-    final CalendarDate? lastDay = ledger.lastCoveredDay;
+    final DateTime? setAt = space.manualBalanceUpdatedAt;
 
-    return SageCard(
-      padding: const EdgeInsets.all(SageSpace.lg),
-      onTap: () => showBalanceSheet(context, ref, space: space, money: money),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Text(
-                free != null
-                    ? tr('dashboard.freeMoney')
-                    : tr('dashboard.lasts'),
-                style: text.labelSmall,
-              ),
-              const SizedBox(width: SageSpace.sm),
-              CoverageDot(ledger.coverage),
-            ],
-          ),
-          const SizedBox(height: SageSpace.sm),
-          Text(
-            free != null
-                ? money.format(free)
-                : (lastDay == null
-                      ? money.format(ledger.cascade.all.finalBalance)
-                      : dates.dayMonth(lastDay, reference: ledger.today)),
-            style: text.displaySmall?.copyWith(
-              color: free == null ? sage.danger : sage.ink,
-            ),
-          ),
-          if (free == null) ...<Widget>[
-            const SizedBox(height: SageSpace.xs),
-            Text(
-              tr(
-                'dashboard.overspend',
-                namedArgs: <String, String>{
-                  'amount': money.format(-ledger.cascade.all.finalBalance),
-                },
-              ),
-              style: text.bodySmall?.copyWith(color: sage.danger),
-            ),
-          ],
-          const SizedBox(height: SageSpace.md),
-          const Hairline(),
-          const SizedBox(height: SageSpace.md),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(tr('dashboard.currentMoney'), style: text.labelSmall),
-                    const SizedBox(height: SageSpace.xs),
-                    Text(
-                      money.format(ledger.available),
-                      style: text.titleSmall,
-                    ),
-                    if (space.manualBalanceUpdatedAt != null)
-                      Text(
-                        tr(
-                          'dashboard.balanceSetOn',
-                          namedArgs: <String, String>{
-                            'date': dates.short(
-                              CalendarDate.fromDateTime(
-                                space.manualBalanceUpdatedAt!.toUtc(),
-                              ),
-                            ),
-                          },
-                        ),
-                        style: text.bodySmall,
-                      ),
-                    if (ledger.excludedCount > 0)
-                      Text(
-                        plural(
-                          'balance.excludedFromWalker',
-                          ledger.excludedCount,
-                        ),
-                        style: text.bodySmall,
-                      ),
-                  ],
-                ),
-              ),
-              Icon(Icons.edit_outlined, size: 18, color: sage.inkLabel),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Mandatory first, then everything: two answers from one walk (spec 4.4).
-class _CascadeCard extends StatelessWidget {
-  const _CascadeCard({required this.ledger, required this.money});
-
-  final FlowLedger ledger;
-  final MoneyFormat money;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final Decimal? base = ledger.baseRemainder;
-    final Decimal? net = ledger.freeCash;
-
-    return SageCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(tr('dashboard.cascade'), style: text.titleSmall),
-          const SizedBox(height: SageSpace.md),
-          _CascadeRow(
-            label: tr('dashboard.baseRemainder'),
-            hint: tr('dashboard.baseRemainderHint'),
-            value: base == null
-                ? tr('dashboard.notCovered')
-                : money.format(base),
-            coverage: ledger.cascade.mandatory.coverage,
-          ),
-          const SizedBox(height: SageSpace.md),
-          _CascadeRow(
-            label: tr('dashboard.netFree'),
-            hint: tr('dashboard.netFreeHint'),
-            value: net == null ? tr('dashboard.notCovered') : money.format(net),
-            coverage: ledger.cascade.all.coverage,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CascadeRow extends StatelessWidget {
-  const _CascadeRow({
-    required this.label,
-    required this.hint,
-    required this.value,
-    required this.coverage,
-  });
-
-  final String label;
-  final String hint;
-  final String value;
-  final Coverage coverage;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(label, style: text.bodyLarge),
-              Text(hint, style: text.bodySmall),
+              Text(tr('dashboard.currentMoney'), style: text.labelSmall),
+              const SizedBox(height: SageSpace.xs),
+              Text(money.format(available), style: text.titleSmall),
+              if (setAt != null)
+                Text(
+                  tr(
+                    'dashboard.balanceSetOn',
+                    namedArgs: <String, String>{
+                      'date': dates.short(
+                        CalendarDate.fromDateTime(setAt.toUtc()),
+                      ),
+                    },
+                  ),
+                  style: text.bodySmall,
+                ),
+              if (excludedCount > 0)
+                Text(
+                  plural('balance.excludedFromWalker', excludedCount),
+                  style: text.bodySmall,
+                ),
             ],
           ),
         ),
-        const SizedBox(width: SageSpace.md),
-        Text(
-          value,
-          style: text.titleSmall?.copyWith(
-            color: CoverageDot.colorOf(context, coverage),
-          ),
-        ),
+        Icon(Icons.edit_outlined, size: 18, color: sage.inkLabel),
       ],
     );
   }
 }
 
-/// Planned, paid, still to pay (spec 4.4).
-class _TotalsCard extends StatelessWidget {
-  const _TotalsCard({required this.ledger, required this.money});
-
-  final FlowLedger ledger;
-  final MoneyFormat money;
-
-  @override
-  Widget build(BuildContext context) => SageCard(
-    child: Row(
-      children: <Widget>[
-        Expanded(
-          child: StatColumn(
-            label: tr('dashboard.planned'),
-            value: money.format(ledger.totalPlanned),
-          ),
-        ),
-        Expanded(
-          child: StatColumn(
-            label: tr('dashboard.paid'),
-            value: money.format(ledger.totalPaid),
-          ),
-        ),
-        Expanded(
-          child: StatColumn(
-            label: tr('dashboard.leftToPay'),
-            value: money.format(ledger.totalRemaining),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// "In 5 days — Salary: 2 400 €" (spec 4.4). In Flow this is the next inflow
-/// the user has entered; there is no schedule behind it until M4.
-class _NearestIncomeCard extends StatelessWidget {
-  const _NearestIncomeCard({
-    required this.ledger,
-    required this.money,
-    required this.dates,
-  });
-
-  final FlowLedger ledger;
-  final MoneyFormat money;
-  final DateLabels dates;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final Income? income = ledger.nearestIncome;
-
-    if (income == null) {
-      return SageCard(
-        child: Text(tr('dashboard.noUpcomingIncome'), style: text.bodyMedium),
-      );
-    }
-
-    final int days = ledger.today.daysUntil(income.expectedDate);
-    final Decimal? amount = income.amount;
-
-    return SageCard(
-      child: Row(
-        children: <Widget>[
-          Icon(Icons.south_west, size: 18, color: context.sage.accentStrong),
-          const SizedBox(width: SageSpace.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  days == 0
-                      ? tr('dashboard.incomeToday')
-                      : plural('dashboard.incomeInDays', days),
-                  style: text.labelSmall,
-                ),
-                const SizedBox(height: SageSpace.xs),
-                Text(income.title, style: text.bodyLarge),
-              ],
-            ),
-          ),
-          Text(
-            amount == null ? tr('income.amountUnknown') : money.format(amount),
-            style: text.titleSmall?.copyWith(
-              color: amount == null
-                  ? context.sage.inkLabel
-                  : context.sage.accentStrong,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+/// Opens the "set current balance" sheet for [space].
+Future<void> editBalance(
+  BuildContext context,
+  WidgetRef ref, {
+  required Space space,
+  required MoneyFormat money,
+}) => showBalanceSheet(context, ref, space: space, money: money);

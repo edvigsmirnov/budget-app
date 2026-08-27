@@ -10,6 +10,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/spaces/starter_categories.dart';
 
 /// Creating a Space (spec 3.1).
@@ -19,11 +20,22 @@ import 'package:sielto/features/spaces/starter_categories.dart';
 /// the Space holds its first record. Everything else is editable later, in the
 /// Space settings.
 class SpaceFormPage extends ConsumerStatefulWidget {
-  const SpaceFormPage({this.isFirstSpace = false, super.key});
+  const SpaceFormPage({
+    this.isFirstSpace = false,
+    this.step,
+    this.stepCount,
+    super.key,
+  });
 
   /// The onboarding entry point drops the app bar and its Back button: there
   /// is nothing to go back to.
   final bool isFirstSpace;
+
+  /// Set when this form is the last step of onboarding, so it carries the same
+  /// progress bar as the steps before it. Null when reached from the Spaces
+  /// list, where there is no flow to show progress through.
+  final int? step;
+  final int? stepCount;
 
   @override
   ConsumerState<SpaceFormPage> createState() => _SpaceFormPageState();
@@ -53,7 +65,11 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     setState(() => _saving = true);
     final Repositories repos = ref.read(repositoriesProvider);
     final String locale = context.locale.toString();
-    final String currency = _currency ?? Currencies.forLocale(locale);
+    // The onboarding answer first, the device locale only as a fallback.
+    final String currency =
+        _currency ??
+        ref.read(localSettingsProvider).currencyCode ??
+        Currencies.forLocale(locale);
 
     try {
       final Space space = await repos.spaces.create(
@@ -97,76 +113,42 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final String locale = context.locale.toString();
-    final String currency = _currency ?? Currencies.forLocale(locale);
+    // The onboarding answer first, the device locale only as a fallback.
+    final String currency =
+        _currency ??
+        ref.read(localSettingsProvider).currencyCode ??
+        Currencies.forLocale(locale);
+
+    final int? step = widget.step;
+    final int? stepCount = widget.stepCount;
+
+    // As the last onboarding step this shares that flow's frame: the same
+    // progress bar, and the primary action pinned rather than scrolling.
+    if (step != null && stepCount != null) {
+      return Scaffold(
+        backgroundColor: sage.surface,
+        body: OnboardingScaffold(
+          step: step,
+          stepCount: stepCount,
+          title: tr('space.firstTitle'),
+          body: tr('space.firstBody'),
+          primaryLabel: tr('space.create'),
+          onPrimary: _canSave ? _create : null,
+          // Currency was step 2; asking again here would read as a second,
+          // different question.
+          children: _fields(locale, currency, showCurrency: false),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: sage.surface,
-      appBar: widget.isFirstSpace
-          ? null
-          : AppBar(title: Text(tr('space.createTitle'))),
+      appBar: AppBar(title: Text(tr('space.createTitle'))),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
           children: <Widget>[
-            if (widget.isFirstSpace) ...<Widget>[
-              Text(
-                tr('space.firstTitle'),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: SageSpace.sm),
-              Text(
-                tr('space.firstBody'),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: SageSpace.xl),
-            ],
-            LabelledField(
-              label: tr('space.fieldTitle'),
-              child: TextField(
-                controller: _title,
-                textInputAction: TextInputAction.next,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(hintText: tr('space.titleHint')),
-              ),
-            ),
-            const SizedBox(height: SageSpace.lg),
-            FieldLabel(tr('space.fieldMode')),
-            for (final BudgetMode mode in BudgetMode.values) ...<Widget>[
-              _ModeCard(
-                mode: mode,
-                selected: _mode == mode,
-                onTap: () => setState(() => _mode = mode),
-              ),
-              const SizedBox(height: SageSpace.sm),
-            ],
-            Text(
-              tr('space.modeIsPermanent'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: SageSpace.lg),
-            LabelledField(
-              label: tr('space.fieldCurrency'),
-              child: DropdownButtonFormField<String>(
-                initialValue: currency,
-                items: <DropdownMenuItem<String>>[
-                  for (final String code in Currencies.offered(currency))
-                    DropdownMenuItem<String>(
-                      value: code,
-                      child: Text(Currencies.label(code, locale)),
-                    ),
-                ],
-                onChanged: (String? code) =>
-                    setState(() => _currency = code ?? currency),
-              ),
-            ),
-            const SizedBox(height: SageSpace.xs),
-            Text(
-              tr('space.currencyFreezes'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: SageSpace.lg),
-            FieldLabel(tr('space.fieldStorage')),
-            const _StorageChoice(),
+            ..._fields(locale, currency, showCurrency: true),
             const SizedBox(height: SageSpace.xl),
             FilledButton(
               onPressed: _canSave ? _create : null,
@@ -177,6 +159,63 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
       ),
     );
   }
+
+  /// The form body, shared by the onboarding frame and the standalone screen.
+  List<Widget> _fields(
+    String locale,
+    String currency, {
+    required bool showCurrency,
+  }) => <Widget>[
+    LabelledField(
+      label: tr('space.fieldTitle'),
+      child: TextField(
+        controller: _title,
+        textInputAction: TextInputAction.next,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: InputDecoration(hintText: tr('space.titleHint')),
+      ),
+    ),
+    const SizedBox(height: SageSpace.lg),
+    FieldLabel(tr('space.fieldMode')),
+    for (final BudgetMode mode in BudgetMode.values) ...<Widget>[
+      _ModeCard(
+        mode: mode,
+        selected: _mode == mode,
+        onTap: () => setState(() => _mode = mode),
+      ),
+      const SizedBox(height: SageSpace.sm),
+    ],
+    Text(
+      tr('space.modeIsPermanent'),
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+    if (showCurrency) ...<Widget>[
+      const SizedBox(height: SageSpace.lg),
+      LabelledField(
+        label: tr('space.fieldCurrency'),
+        child: DropdownButtonFormField<String>(
+          initialValue: currency,
+          items: <DropdownMenuItem<String>>[
+            for (final String code in Currencies.offered(currency))
+              DropdownMenuItem<String>(
+                value: code,
+                child: Text(Currencies.label(code, locale)),
+              ),
+          ],
+          onChanged: (String? code) =>
+              setState(() => _currency = code ?? currency),
+        ),
+      ),
+      const SizedBox(height: SageSpace.xs),
+      Text(
+        tr('space.currencyFreezes'),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    ],
+    const SizedBox(height: SageSpace.lg),
+    FieldLabel(tr('space.fieldStorage')),
+    const _StorageChoice(),
+  ];
 }
 
 /// One of the three modes, with the explanation and examples from spec 3.1.

@@ -6,7 +6,9 @@
     "delete": "Delete",
     "close": "Close",
     "undo": "Undo",
-    "loadFailed": "Could not load this data"
+    "loadFailed": "Could not load this data",
+    "next": "Next",
+    "skip": "Skip"
   },
   "theme": {
     "system": "System",
@@ -32,7 +34,10 @@
     "welcomeBody": "No account, no email, no password. Your data stays on this device until you decide otherwise.",
     "fieldNickname": "Nickname",
     "nicknameHint": "Optional",
-    "nicknameWhy": "Used inside the app only. It becomes visible to others if you ever share a Space."
+    "nicknameWhy": "Optional, and local until you move a Space to the cloud — then the people sharing it can see it.",
+    "nicknameTitle": "What should we call you?",
+    "currencyTitle": "Currency",
+    "currencyWhy": "Taken from your device. You can change it now; afterwards only while a Space has no records in it."
   },
   "mode": {
     "incomeDriven": {
@@ -118,7 +123,12 @@
       "one": "In {} day",
       "other": "In {} days"
     },
-    "noUpcomingIncome": "No income entered ahead."
+    "noUpcomingIncome": "No income entered ahead.",
+    "projection": {
+      "one": "Next {} day",
+      "other": "Next {} days"
+    },
+    "averagePerDay": "{amount}/day planned"
   },
   "balance": {
     "sheetTitle": "Set current balance",
@@ -315,5 +325,19 @@
     "body": "Does the new amount apply to this month only, or from now on? Occurrences already received never change.",
     "thisOne": "Only this one",
     "allFuture": "From now on"
+  },
+  "welcome": {
+    "tagline": "A simple space\nfor complicated money",
+    "start": "Create a Space"
+  },
+  "period": {
+    "previous": "Previous period",
+    "next": "Next period",
+    "current": "Current",
+    "noAnchorTitle": "Add an anchor income to start planning periods",
+    "noAnchorBody": "Without a regular income, Flow or Budget may suit better — but you can carry on here.",
+    "amountUnknownTitle": "Income expected, amount not specified",
+    "amountUnknownBody": "The expense side is fully computed. The remainder appears once the amount is known.",
+    "setAmount": "Set the amount"
   }
 }

@@ -27,6 +27,7 @@ class LocalSettings {
   static const String _keyNickname = 'nickname';
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyFeedDensity = 'feed_density';
+  static const String _keyCurrencyCode = 'currency_code';
   static const String _keyCurrentSpaceId = 'current_space_id';
 
   final SharedPreferences _prefs;
@@ -70,6 +71,17 @@ class LocalSettings {
 
   Future<void> setFeedDensity(FeedDensity density) =>
       _prefs.setString(_keyFeedDensity, density.name);
+
+  /// The currency answered at onboarding, used as the default for every Space
+  /// created afterwards (spec 2.1). Null before that answer exists, where the
+  /// device locale decides instead.
+  ///
+  /// Device-local rather than a Space field: each Space stores its own frozen
+  /// currency, and this is only the starting point offered for the next one.
+  String? get currencyCode => _prefs.getString(_keyCurrencyCode);
+
+  Future<void> setCurrencyCode(String code) =>
+      _prefs.setString(_keyCurrencyCode, code);
 
   /// The Space to reopen at launch. Cleared when that Space is gone.
   String? get currentSpaceId => _prefs.getString(_keyCurrentSpaceId);
