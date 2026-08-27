@@ -185,7 +185,7 @@
     "periodCurrent": "Current period",
     "periodNext": "Next period",
     "periodHint": "By date follows the due date. A period chosen by hand is kept even when the salary moves.",
-    "notesHint": "For example: discussed with Tatiana, moved the purchase to after payday",
+    "notesHint": "Anything worth remembering later",
     "seriesPosition": "Payment {position} of {count} in a repeating payment",
     "seriesHint": "Saving asks how far the change reaches: this one, this and later, or all of them.",
     "deleteSeries": "Delete the repeating payment"
