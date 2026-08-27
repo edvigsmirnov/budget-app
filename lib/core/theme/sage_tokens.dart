@@ -76,6 +76,12 @@ class SageColors extends ThemeExtension<SageColors> {
   final Color accentStrong;
 
   /// Filled surface sitting behind accent text.
+  ///
+  /// It has **no theme-invariant foreground**: it is a light green on light
+  /// and a dark green on dark, so it needs [accentOn] in one theme and
+  /// [accentStrong] in the other. A widget that wants one fill and one
+  /// foreground across both themes uses [accent] with [accentOn] instead —
+  /// pairing this token with [accentOn] renders dark-on-dark.
   final Color accentFill;
 
   /// Theme-invariant. Foreground on a solid [accent] fill.

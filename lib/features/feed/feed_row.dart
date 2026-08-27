@@ -213,9 +213,11 @@ class _PaidCircle extends StatelessWidget {
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: record.isPaid ? sage.accentFill : Colors.transparent,
+              // Solid accent, so the tick keeps its contrast on both grounds
+              // (plan section 5, rule 2).
+              color: record.isPaid ? sage.accent : Colors.transparent,
               border: Border.all(
-                color: record.isPaid ? sage.accentFill : sage.border,
+                color: record.isPaid ? sage.accent : sage.border,
                 width: 1.5,
               ),
             ),
