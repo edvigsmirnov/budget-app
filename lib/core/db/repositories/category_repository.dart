@@ -89,15 +89,27 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
 
   /// The starter set, written in one batch at Space creation (spec 7).
   /// Titles come from the caller, already translated.
-  Future<void> createStarterSet(String spaceId, List<String> titles) {
+  /// Writes the set a new Space opens with, in the order given.
+  ///
+  /// Each carries its own icon, colour and default type: the starter set is
+  /// the user's first sight of what a category can be, and blanks would teach
+  /// them it is only a name (spec 7).
+  Future<void> createStarterSet(
+    String spaceId,
+    List<({String title, String? icon, String? color, ExpenseType type})>
+    starters,
+  ) {
     final ({String author, DateTime editedAt}) s = stamp();
     return db.batch((Batch b) {
       b.insertAll(db.categories, <CategoriesCompanion>[
-        for (int i = 0; i < titles.length; i++)
+        for (int i = 0; i < starters.length; i++)
           CategoriesCompanion.insert(
             id: SyncedRepository.newId(),
             spaceId: spaceId,
-            title: titles[i].trim(),
+            title: starters[i].title.trim(),
+            icon: Value<String?>(starters[i].icon),
+            color: Value<String?>(starters[i].color),
+            expenseType: Value<ExpenseType>(starters[i].type),
             sortOrder: Value<int>(i * PaymentRepository.sortOrderGap),
             syncStatus: const Value<SyncStatus>(SyncStatus.pending),
             lastModifiedBy: Value<String?>(s.author),

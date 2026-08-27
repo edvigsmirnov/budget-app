@@ -138,6 +138,10 @@ class _SectionLabel extends StatelessWidget {
       SageSpace.gutter,
       SageSpace.xs,
     ),
-    child: Text(text, style: Theme.of(context).textTheme.labelMedium),
+    // Caps, like the design's list-group headers.
+    child: Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall,
+    ),
   );
 }

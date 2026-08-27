@@ -326,17 +326,43 @@ void main() {
       expect(await categories.allEverInSpace(space.id), hasLength(1));
     });
 
-    test('the starter set lands in order', () async {
+    test('the starter set lands in order, dressed', () async {
       final Space space = await makeSpace();
-      await categories.createStarterSet(space.id, <String>[
+      await categories.createStarterSet(
+        space.id,
+        <({String title, String? icon, String? color, ExpenseType type})>[
+          (
+            title: 'Rent',
+            icon: '🏠',
+            color: '#8FB996',
+            type: ExpenseType.mandatory,
+          ),
+          (
+            title: 'Utilities',
+            icon: '💡',
+            color: '#CBB98F',
+            type: ExpenseType.mandatory,
+          ),
+          (
+            title: 'Groceries',
+            icon: '🛒',
+            color: '#E29A5C',
+            type: ExpenseType.variable,
+          ),
+        ],
+      );
+
+      final List<Category> rows = await categories.inSpace(space.id);
+      expect(rows.map((Category c) => c.title), <String>[
         'Rent',
         'Utilities',
-        'Internet',
+        'Groceries',
       ]);
-      expect(
-        (await categories.inSpace(space.id)).map((Category c) => c.title),
-        <String>['Rent', 'Utilities', 'Internet'],
-      );
+      // A starter set arrives ready to look at, not as three blank names.
+      expect(rows.first.icon, '🏠');
+      expect(rows.first.color, '#8FB996');
+      expect(rows.first.expenseType, ExpenseType.mandatory);
+      expect(rows.last.expenseType, ExpenseType.variable);
     });
   });
 

@@ -47,11 +47,13 @@ void main() {
     });
 
     test('clamping happens before working days are considered', () {
-      // 2026-02-28 is a Saturday: clamp first, then open the window.
+      // 2026-02-28 is a Saturday: clamp first, then open the window. The
+      // window still reaches Monday, but the anchor stays in February.
       const FixedDateSchedule s = FixedDateSchedule(31);
       final IncomeWindow w = s.resolveFor(2026, 2, calendar: weekends);
       expect(w.windowStart, d('2026-02-27'));
-      expect(w.anchorDate, d('2026-03-02'));
+      expect(w.windowEnd, d('2026-03-02'));
+      expect(w.anchorDate, d('2026-02-27'));
     });
 
     test('a day outside 1..31 is refused', () {
@@ -156,14 +158,14 @@ void main() {
       expect(r.end, d('2026-02-28'));
     });
 
-    test('the anchor is the latest day of the span', () {
-      // The latest-day rule: a period never starts on money that may be late
-      // (spec 5.3).
+    test('the anchor is the latest day of the span within its month', () {
       const DateRangeSchedule s = DateRangeSchedule(28, 31);
       final IncomeWindow w = s.resolveFor(2026, 5, calendar: weekends);
-      // 2026-05-31 is a Sunday, so it extends to Monday the 1st of June.
+      // 2026-05-31 is a Sunday, so the span extends to Monday 1 June — but
+      // May's salary anchors May's cycle, on the Friday before.
       expect(w.windowStart, d('2026-05-28'));
-      expect(w.anchorDate, d('2026-06-01'));
+      expect(w.windowEnd, d('2026-06-01'));
+      expect(w.anchorDate, d('2026-05-29'));
     });
 
     test('a backwards range is refused', () {

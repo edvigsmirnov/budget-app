@@ -44,7 +44,11 @@ class SageCard extends StatelessWidget {
   }
 }
 
-/// The uppercase 10/600 label that sits above a form field.
+/// The label above a form field.
+///
+/// Uppercase, and that is not the same call as the figures on the Dashboard:
+/// the design sets field labels and list-group headers in caps, and leaves
+/// running labels — the ones sitting next to a number — in sentence case.
 class FieldLabel extends StatelessWidget {
   const FieldLabel(this.text, {super.key});
 
@@ -53,7 +57,10 @@ class FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: SageSpace.sm),
-    child: Text(text, style: Theme.of(context).textTheme.labelSmall),
+    child: Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall,
+    ),
   );
 }
 

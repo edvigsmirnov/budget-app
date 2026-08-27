@@ -253,7 +253,9 @@
     "titleFrozen": "The name is fixed: payments are already filed under it. Colour and type stay editable.",
     "deleteTitle": "Delete this category?",
     "deleteBody": "Payments filed under \"{title}\" keep its name, but it can no longer be chosen for new ones.",
-    "deleted": "Deleted \"{title}\""
+    "deleted": "Deleted \"{title}\"",
+    "fieldIcon": "Icon",
+    "iconHint": "Any emoji"
   },
   "starterCategory": {
     "rent": "Rent",

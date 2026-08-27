@@ -10,7 +10,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/category_colors.dart';
-import 'package:sielto/features/categories/category_form_sheet.dart';
+import 'package:sielto/features/categories/category_form_page.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// The category list (spec 7): add, reorder, recolour, soft-delete with undo.
@@ -28,29 +28,50 @@ class CategoriesPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('category.title'))),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showCategorySheet(context, ref),
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        title: Text(tr('category.title')),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: tr('category.add'),
+            onPressed: () => openCategoryForm(context),
+          ),
+        ],
       ),
-      body: categories.isEmpty
-          ? EmptyState(message: tr('category.empty'))
-          : ReorderableListView.builder(
-              padding: const EdgeInsets.only(bottom: 96),
-              itemCount: categories.length,
-              itemBuilder: (BuildContext context, int index) => _CategoryTile(
-                key: ValueKey<String>(categories[index].id),
-                category: categories[index],
-                onEdit: () => showCategorySheet(
-                  context,
-                  ref,
-                  category: categories[index],
-                ),
-                onDelete: () => _delete(context, ref, categories[index]),
-              ),
-              onReorderItem: (int oldIndex, int newIndex) =>
-                  _reorder(ref, categories, oldIndex, newIndex),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: categories.isEmpty
+                ? EmptyState(message: tr('category.empty'))
+                : ReorderableListView.builder(
+                    buildDefaultDragHandles: false,
+                    padding: EdgeInsets.zero,
+                    itemCount: categories.length,
+                    itemBuilder: (BuildContext context, int index) =>
+                        _CategoryTile(
+                          key: ValueKey<String>(categories[index].id),
+                          index: index,
+                          category: categories[index],
+                          onEdit: () => openCategoryForm(
+                            context,
+                            category: categories[index],
+                          ),
+                          onDelete: () =>
+                              _delete(context, ref, categories[index]),
+                        ),
+                    onReorderItem: (int oldIndex, int newIndex) =>
+                        _reorder(ref, categories, oldIndex, newIndex),
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(SageSpace.gutter),
+            child: DashedButton(
+              label: '+ ${tr('category.add')}',
+              onTap: () => openCategoryForm(context),
             ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -108,14 +129,21 @@ class CategoriesPage extends ConsumerWidget {
   }
 }
 
+/// One category: grip, mark, name, its default type, and a way in.
+///
+/// The grip leads rather than trails, because reordering categories is what
+/// sets the order they are offered in when filing a payment — it is the row's
+/// most-used control, not an afterthought (design section 7).
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
+    required this.index,
     required this.category,
     required this.onEdit,
     required this.onDelete,
     super.key,
   });
 
+  final int index;
   final Category category;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -123,28 +151,70 @@ class _CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return ListTile(
-      onTap: onEdit,
-      leading: Container(
-        width: 12,
-        height: 12,
-        decoration: BoxDecoration(
-          color: parseCategoryColor(category.color) ?? sage.accent,
-          shape: BoxShape.circle,
-        ),
+    final TextTheme text = Theme.of(context).textTheme;
+
+    return Dismissible(
+      key: ValueKey<String>('dismiss:${category.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: sage.dangerTint,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: SageSpace.lg),
+        child: Icon(Icons.delete_outline, size: 20, color: sage.danger),
       ),
-      title: Text(category.title),
-      subtitle: Text(tr('expenseType.${category.expenseType.name}')),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20),
-            tooltip: tr('common.delete'),
-            onPressed: onDelete,
+      confirmDismiss: (DismissDirection _) async {
+        onDelete();
+        // The undo snackbar puts the row back, so the list is what decides
+        // whether it is gone, not the dismiss animation.
+        return false;
+      },
+      child: InkWell(
+        onTap: onEdit,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: SageSpace.gutter,
+            vertical: SageSpace.md,
           ),
-          Icon(Icons.drag_indicator, size: 20, color: sage.inkLabel),
-        ],
+          child: Row(
+            children: <Widget>[
+              ReorderableDragStartListener(
+                index: index,
+                child: Icon(
+                  Icons.drag_indicator,
+                  size: 20,
+                  color: sage.inkLabel,
+                ),
+              ),
+              const SizedBox(width: SageSpace.md),
+              CategoryMark(color: category.color, icon: category.icon),
+              const SizedBox(width: SageSpace.md),
+              Expanded(
+                child: Text(
+                  category.title,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(width: SageSpace.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: sage.canvas,
+                  borderRadius: BorderRadius.circular(SageRadius.pill),
+                ),
+                child: Text(
+                  tr('expenseType.${category.expenseType.name}'),
+                  style: text.labelSmall?.copyWith(color: sage.inkSecondary),
+                ),
+              ),
+              const SizedBox(width: SageSpace.xs),
+              Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -114,10 +114,9 @@ void main() {
       expect(w.windowEnd, d('2026-03-13'));
     });
 
-    test('the anchor is always the window end', () {
+    test('the anchor is the window end while that stays in the month', () {
       for (final String iso in <String>[
         '2026-01-01',
-        '2026-02-28',
         '2026-03-14',
         '2026-12-25',
       ]) {
@@ -127,6 +126,18 @@ void main() {
         );
         expect(w.anchorDate, w.windowEnd, reason: iso);
       }
+    });
+
+    test('an anchor that would leave the month falls back instead', () {
+      // 28 February 2026 is a Saturday. Forward is Monday 2 March, which would
+      // open March's cycle with February's salary; the Friday before does not.
+      final IncomeWindow w = resolveIncomeWindow(
+        start: d('2026-02-28'),
+        calendar: weekends,
+      );
+      expect(w.windowStart, d('2026-02-27'));
+      expect(w.windowEnd, d('2026-03-02'));
+      expect(w.anchorDate, d('2026-02-27'));
     });
 
     test('a backwards range is refused', () {
@@ -140,7 +151,9 @@ void main() {
       );
     });
 
-    test('a window crossing into the next year still resolves', () {
+    test('a window crossing into the next year anchors in the old one', () {
+      // The span still reaches into January — the money might genuinely arrive
+      // then — but December's salary anchors December's cycle.
       final WorkingDayCalendar calendar = WorkingDayCalendar(
         holidays: <CalendarDate>{d('2025-12-31'), d('2026-01-01')},
       );
@@ -149,7 +162,8 @@ void main() {
         calendar: calendar,
       );
       expect(w.windowStart, d('2025-12-30'));
-      expect(w.anchorDate, d('2026-01-02'));
+      expect(w.windowEnd, d('2026-01-02'));
+      expect(w.anchorDate, d('2025-12-30'));
     });
   });
 }
