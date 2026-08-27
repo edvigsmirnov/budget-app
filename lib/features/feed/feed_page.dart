@@ -115,20 +115,25 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       backgroundColor: context.sage.surface,
       appBar: AppHeader(
         title: tr('nav.feed'),
-        bottom: _FeedTotals(source: source, money: money),
+        bottom: _FeedTotals(
+          source: source,
+          money: money,
+          selector: source.byPeriod
+              ? PeriodSelector(
+                  onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
+                )
+              : null,
+        ),
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: context.sage.accent,
+        foregroundColor: context.sage.accentOn,
+        shape: const CircleBorder(),
         onPressed: () => showQuickAddMenu(context, ref, today: source.today),
         child: const Icon(Icons.add),
       ),
       body: Column(
         children: <Widget>[
-          // The same selection the Dashboard shows, so paging on one screen
-          // moves the other (spec 4.3).
-          if (source.byPeriod)
-            PeriodSelector(
-              onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
-            ),
           Expanded(
             child: items.isEmpty
                 ? EmptyState(
@@ -203,6 +208,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           cutoffEntryId: null,
           available: null,
           freeCash: null,
+          paid: Decimal.zero,
+          remaining: Decimal.zero,
           byPeriod: false,
         );
       }
@@ -216,6 +223,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         cutoffEntryId: ledger.cascade?.all.cutoffEntryId,
         available: ledger.anchorAmount,
         freeCash: ledger.freeCash,
+        paid: ledger.totalPaid,
+        remaining: ledger.totalRemaining,
         byPeriod: true,
       );
     }
@@ -229,6 +238,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       cutoffEntryId: flow.cascade.all.cutoffEntryId,
       available: flow.available,
       freeCash: flow.freeCash,
+      paid: flow.totalPaid,
+      remaining: flow.totalRemaining,
       byPeriod: false,
     );
   }
@@ -350,6 +361,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           onTogglePaid: () => _togglePaid(record),
           onDelete: () => _delete(record),
           isFrozen: freeze.isFrozen(record.budgetPeriodId),
+          isOverdue: record.isOverdue(today),
           onLongPress: () =>
               showRecordMenu(context, ref, record: record, today: today),
           dragHandle: ReorderableDragStartListener(
@@ -521,6 +533,8 @@ class _FeedSource {
     required this.cutoffEntryId,
     required this.available,
     required this.freeCash,
+    required this.paid,
+    required this.remaining,
     required this.byPeriod,
   });
 
@@ -538,23 +552,50 @@ class _FeedSource {
   /// Null when the plan is not covered, or when [available] is unknown.
   final Decimal? freeCash;
 
+  /// Of the plan, what is settled and what is still owed (spec 4.5).
+  final Decimal paid;
+  final Decimal remaining;
+
   final bool byPeriod;
 }
 
 /// Income and Free money for the current context, above the list (spec 4.5).
+/// The four figures of the current context, over the list (design section 4.5).
+///
+/// A 2x2 grid rather than a row of columns: four numbers side by side wrap at
+/// any real type size, and the pairing says something — what came in against
+/// what is free, what is settled against what is not.
 class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
-  const _FeedTotals({required this.source, required this.money});
+  const _FeedTotals({
+    required this.source,
+    required this.money,
+    required this.selector,
+  });
 
   final _FeedSource source;
   final MoneyFormat money;
 
+  /// The period arrows, when there is a period to move between.
+  final Widget? selector;
+
+  static const double _tileHeight = 58;
+
   @override
-  Size get preferredSize => const Size.fromHeight(52);
+  Size get preferredSize =>
+      Size.fromHeight((selector == null ? 8 : 48) + _tileHeight * 2 + 20);
 
   @override
   Widget build(BuildContext context) {
     final Decimal? available = source.available;
     final Decimal? free = source.freeCash;
+
+    // Not covered and not computable are different answers, and only one of
+    // them is red.
+    final String freeText = free != null
+        ? money.format(free)
+        : (available == null
+              ? tr('income.amountUnknown')
+              : tr('dashboard.notCovered'));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -563,40 +604,66 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
         SageSpace.gutter,
         SageSpace.md,
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Expanded(
-            child: available == null
-                ? StatColumn(
+          ?selector,
+          SizedBox(
+            height: _tileHeight,
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: _Tile(
                     label: source.byPeriod
                         ? tr('feed.income')
                         : tr('feed.currentMoney'),
-                    value: tr('income.amountUnknown'),
-                  )
-                : _TotalBlock(
-                    label: source.byPeriod
-                        ? tr('feed.income')
-                        : tr('feed.currentMoney'),
+                    text: available == null
+                        ? tr('income.amountUnknown')
+                        : money.format(available),
                     value: available,
                     money: money,
+                    highlighted: true,
                   ),
-          ),
-          Expanded(
-            child: free == null
-                ? StatColumn(
+                ),
+                const SizedBox(width: SageSpace.sm),
+                Expanded(
+                  child: _Tile(
                     label: tr('dashboard.freeMoney'),
-                    // Not covered and not computable are different answers,
-                    // and only one of them is red.
-                    value: available == null
-                        ? tr('income.amountUnknown')
-                        : tr('dashboard.notCovered'),
-                    valueColor: available == null ? null : context.sage.danger,
-                  )
-                : _TotalBlock(
-                    label: tr('dashboard.freeMoney'),
+                    text: freeText,
                     value: free,
                     money: money,
+                    valueColor: free == null && available != null
+                        ? context.sage.danger
+                        : null,
                   ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: SageSpace.sm),
+          SizedBox(
+            height: _tileHeight,
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: _Tile(
+                    label: tr('dashboard.paid'),
+                    text: money.format(source.paid),
+                    value: source.paid,
+                    money: money,
+                  ),
+                ),
+                const SizedBox(width: SageSpace.sm),
+                Expanded(
+                  child: _Tile(
+                    label: tr('dashboard.leftToPay'),
+                    text: money.format(source.remaining),
+                    value: source.remaining,
+                    money: money,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -604,30 +671,74 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-class _TotalBlock extends StatelessWidget {
-  const _TotalBlock({
+/// One figure on its own card: label above, amount below, both centred.
+class _Tile extends StatelessWidget {
+  const _Tile({
     required this.label,
+    required this.text,
     required this.value,
     required this.money,
+    this.valueColor,
+    this.highlighted = false,
   });
 
   final String label;
-  final Decimal value;
+
+  /// What to draw when there is no figure to wind to.
+  final String text;
+
+  /// Null where the answer is a word rather than a number.
+  final Decimal? value;
+
   final MoneyFormat money;
+  final Color? valueColor;
+
+  /// The income tile carries the accent tint, as the one figure the others are
+  /// measured against.
+  final bool highlighted;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      Text(label, style: Theme.of(context).textTheme.bodyMedium),
-      const SizedBox(height: SageSpace.xs),
-      AnimatedMoney(value: value, format: money.format),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final TextTheme style = Theme.of(context).textTheme;
+
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: highlighted ? sage.accentTint : sage.card,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+        border: Border.all(color: sage.border),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style.bodySmall?.copyWith(color: sage.inkLabel),
+          ),
+          const SizedBox(height: 2),
+          // The tween is the point when the period changes: the figures wind
+          // rather than swap, so a move between cycles reads as a move
+          // (spec 4.5, 10.5).
+          if (value != null)
+            AnimatedMoney(value: value!, format: money.format)
+          else
+            Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style.titleSmall?.copyWith(color: valueColor),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
-/// A date, or the Overdue banner that stays at the top until its rows are
-/// marked paid (spec 4.5).
+/// The day a group of records falls on (spec 4.5). The overdue group carries
+/// its warning on the rows themselves, so its header draws nothing.
 class _DayHeader extends StatelessWidget {
   const _DayHeader({
     required this.header,
@@ -645,20 +756,7 @@ class _DayHeader extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
-    if (header.isOverdue) {
-      return Container(
-        width: double.infinity,
-        color: sage.dangerTint,
-        padding: const EdgeInsets.symmetric(
-          horizontal: SageSpace.gutter,
-          vertical: SageSpace.sm,
-        ),
-        child: Text(
-          tr('payment.overdue').toUpperCase(),
-          style: text.labelSmall?.copyWith(color: sage.danger),
-        ),
-      );
-    }
+    if (header.isOverdue) return const SizedBox.shrink();
 
     final CalendarDate date = header.date!;
     final bool isToday = date == today;
@@ -669,19 +767,11 @@ class _DayHeader extends StatelessWidget {
         SageSpace.gutter,
         SageSpace.xs,
       ),
-      child: Row(
-        children: <Widget>[
-          Text(
-            isToday ? tr('feed.today') : dates.dayMonth(date, reference: today),
-            style: text.labelSmall?.copyWith(
-              color: isToday ? sage.accentStrong : sage.inkLabel,
-            ),
-          ),
-          const SizedBox(width: SageSpace.sm),
-          Text(dates.weekday(date), style: text.labelSmall),
-          const SizedBox(width: SageSpace.sm),
-          const Expanded(child: Hairline()),
-        ],
+      child: Text(
+        isToday ? tr('feed.today') : dates.dayMonth(date, reference: today),
+        style: text.labelMedium?.copyWith(
+          color: isToday ? sage.accentStrong : sage.inkLabel,
+        ),
       ),
     );
   }

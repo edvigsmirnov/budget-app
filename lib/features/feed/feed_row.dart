@@ -60,6 +60,7 @@ class FeedRowTile extends StatelessWidget {
     required this.onDelete,
     required this.onLongPress,
     this.isFrozen = false,
+    this.isOverdue = false,
     this.dragHandle,
     super.key,
   });
@@ -81,6 +82,11 @@ class FeedRowTile extends StatelessWidget {
   /// inert (spec 5.5).
   final bool isFrozen;
 
+  /// Due before today and still unpaid. The row carries the warning itself
+  /// rather than sitting under a section banner, which is what lets several
+  /// late records each say so (spec 4.5).
+  final bool isOverdue;
+
   /// The reorder grip, supplied by the list so it can attach its own listener.
   final Widget? dragHandle;
 
@@ -88,9 +94,11 @@ class FeedRowTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
+    // Income reads green; an expense is plain ink until the money stops
+    // reaching it, and red is reserved for that and for being late.
     final Color amountColor = record.isIncome
         ? sage.accentStrong
-        : (isCovered ? sage.ink : sage.danger);
+        : (isOverdue || !isCovered ? sage.danger : sage.ink);
 
     return Dismissible(
       key: ValueKey<String>('dismiss:${record.id}'),
@@ -119,97 +127,106 @@ class FeedRowTile extends StatelessWidget {
         // undone delete brings the row straight back.
         return false;
       },
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: SizedBox(
-          height: rowHeightFor(density),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: SageSpace.gutter,
-              vertical: density == FeedDensity.compact ? 4 : SageSpace.sm,
-            ),
-            child: Row(
-              children: <Widget>[
-                _PaidCircle(
-                  record: record,
-                  onTap: isFrozen ? null : onTogglePaid,
-                ),
-                const SizedBox(width: SageSpace.md),
-                _TypeMarker(record: record, category: category),
-                const SizedBox(width: SageSpace.md),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        record.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodyLarge?.copyWith(
-                          decoration: record.isPaid
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: record.isPaid ? sage.inkSecondary : sage.ink,
-                        ),
-                      ),
-                      if (_subtitle(record, category) case final String sub)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            sub,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.bodySmall,
-                          ),
-                        ),
-                    ],
+      child: Ink(
+        color: isOverdue ? sage.dangerTint : Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: SizedBox(
+            height: rowHeightFor(density),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: SageSpace.gutter,
+                vertical: density == FeedDensity.compact ? 4 : SageSpace.sm,
+              ),
+              child: Row(
+                children: <Widget>[
+                  _PaidCircle(
+                    record: record,
+                    onTap: isFrozen ? null : onTogglePaid,
                   ),
-                ),
-                if (isFrozen)
-                  Padding(
-                    padding: const EdgeInsets.only(right: SageSpace.sm),
-                    child: Icon(
-                      Icons.lock_outline,
+                  const SizedBox(width: SageSpace.md),
+                  _TypeMarker(record: record, category: category),
+                  const SizedBox(width: SageSpace.md),
+                  if (isOverdue) ...<Widget>[
+                    Icon(
+                      Icons.warning_amber_rounded,
                       size: 16,
-                      color: sage.inkLabel,
+                      color: sage.danger,
+                    ),
+                    const SizedBox(width: SageSpace.xs),
+                  ],
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          record.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: record.isPaid ? sage.inkSecondary : sage.ink,
+                          ),
+                        ),
+                        if (_subtitle(record, category) case final String sub)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              sub,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.bodySmall,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                if (record.notes != null && record.notes!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(right: SageSpace.sm),
-                    child: InkWell(
-                      onTap: () => _showNote(context, record.notes!),
-                      customBorder: const CircleBorder(),
-                      child: Tooltip(
-                        message: tr('payment.note'),
-                        child: Padding(
-                          padding: const EdgeInsets.all(SageSpace.xs),
-                          child: Icon(
-                            Icons.sticky_note_2_outlined,
-                            size: 18,
-                            color: sage.inkLabel,
+                  if (isFrozen)
+                    Padding(
+                      padding: const EdgeInsets.only(right: SageSpace.sm),
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 16,
+                        color: sage.inkLabel,
+                      ),
+                    ),
+                  if (record.notes != null && record.notes!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: SageSpace.sm),
+                      child: InkWell(
+                        onTap: () => _showNote(context, record.notes!),
+                        customBorder: const CircleBorder(),
+                        child: Tooltip(
+                          message: tr('payment.note'),
+                          child: Padding(
+                            padding: const EdgeInsets.all(SageSpace.xs),
+                            child: Icon(
+                              Icons.sticky_note_2_outlined,
+                              size: 18,
+                              color: sage.inkLabel,
+                            ),
                           ),
                         ),
                       ),
                     ),
+                  Text(
+                    _amountLabel(record, money),
+                    style: text.bodyLarge?.copyWith(
+                      color: amountColor,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
                   ),
-                Text(
-                  _amountLabel(record, money),
-                  style: text.bodyLarge?.copyWith(
-                    color: amountColor,
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const <FontFeature>[
-                      FontFeature.tabularFigures(),
-                    ],
-                  ),
-                ),
-                if (dragHandle != null) ...<Widget>[
-                  const SizedBox(width: SageSpace.sm),
-                  dragHandle!,
+                  if (dragHandle != null) ...<Widget>[
+                    const SizedBox(width: SageSpace.sm),
+                    dragHandle!,
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
