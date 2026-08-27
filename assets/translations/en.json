@@ -132,7 +132,9 @@
     },
     "averagePerDay": "{amount}/day planned",
     "cascadeHint": "Base remainder is what is left after the mandatory payments alone — the lower bound. Free money above is after the variable ones too.",
-    "nearestIncome": "Nearest income"
+    "nearestIncome": "Nearest income",
+    "atAverageSpend": "at an average spend of {amount}/day",
+    "perDay": "Average/day"
   },
   "balance": {
     "sheetTitle": "Set current balance",

@@ -66,18 +66,15 @@ class _Body extends ConsumerWidget {
           lastCoveredDay: ledger.lastCoveredDay,
           dates: dates,
           today: ledger.today,
-          onTap: () => editBalance(context, ref, space: space, money: money),
-        ),
-        const SizedBox(height: SageSpace.md),
-        SageCard(
-          onTap: () => editBalance(context, ref, space: space, money: money),
-          child: BalanceFooter(
-            space: space,
-            available: ledger.available,
-            excludedCount: ledger.excludedCount,
-            money: money,
-            dates: dates,
+          // The date the money runs out means nothing without the rate it was
+          // computed at (spec 4.6).
+          subtitle: tr(
+            'dashboard.atAverageSpend',
+            namedArgs: <String, String>{
+              'amount': money.format(projection.averageSpendPerDay),
+            },
           ),
+          onTap: () => editBalance(context, ref, space: space, money: money),
         ),
         const SizedBox(height: SageSpace.md),
         ProjectionCard(
@@ -85,6 +82,36 @@ class _Body extends ConsumerWidget {
           money: money,
           dates: dates,
           today: ledger.today,
+        ),
+        const SizedBox(height: SageSpace.md),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: _FigureTile(
+                value: money.format(ledger.available),
+                label: tr('dashboard.currentMoney'),
+                // The balance is Flow's one hand-entered number, so the tile
+                // showing it is also where it is edited (spec 4.6).
+                onTap: () =>
+                    editBalance(context, ref, space: space, money: money),
+              ),
+            ),
+            const SizedBox(width: SageSpace.sm),
+            Expanded(
+              child: _FigureTile(
+                value: money.format(projection.averageSpendPerDay),
+                label: tr('dashboard.perDay'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: SageSpace.sm),
+        BalanceFooter(
+          space: space,
+          available: ledger.available,
+          excludedCount: ledger.excludedCount,
+          money: money,
+          dates: dates,
         ),
         const SizedBox(height: SageSpace.md),
         CascadeCard(
@@ -107,6 +134,44 @@ class _Body extends ConsumerWidget {
           money: money,
         ),
       ],
+    );
+  }
+}
+
+/// One figure on a card, amount over label (design section 4.6).
+///
+/// The inverse of the label-first blocks elsewhere: these two sit under the
+/// projection as its readings, so the number leads and the word explains it.
+class _FigureTile extends StatelessWidget {
+  const _FigureTile({required this.value, required this.label, this.onTap});
+
+  final String value;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return SageCard(
+      padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+      onTap: onTap,
+      child: Column(
+        children: <Widget>[
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.titleMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall?.copyWith(color: context.sage.inkLabel),
+          ),
+        ],
+      ),
     );
   }
 }

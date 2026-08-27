@@ -13,6 +13,18 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/spaces/starter_categories.dart';
 
+/// The modes a Space can be created in today.
+///
+/// Budget is missing on purpose. Its dashboard, its fund and its deadline are
+/// M5 and do not exist, and the mode cannot be changed after creation
+/// (spec 3.1) — so offering it would strand whoever picked it in a Space that
+/// never computes. The enum keeps the value: the schema, the engine and any
+/// Space restored from a backup still know it.
+const List<BudgetMode> offeredBudgetModes = <BudgetMode>[
+  BudgetMode.incomeDriven,
+  BudgetMode.flow,
+];
+
 /// Creating a Space (spec 3.1).
 ///
 /// Two of the choices here are permanent in different ways: the budget mode
@@ -177,7 +189,10 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     ),
     const SizedBox(height: SageSpace.lg),
     FieldLabel(tr('space.fieldMode')),
-    for (final BudgetMode mode in BudgetMode.values) ...<Widget>[
+    // Budget mode is absent rather than offered and broken: the mode is fixed
+    // for the life of a Space (spec 3.1), so a Space created in a mode that
+    // does not compute yet could never be moved out of it.
+    for (final BudgetMode mode in offeredBudgetModes) ...<Widget>[
       _ModeCard(
         mode: mode,
         selected: _mode == mode,

@@ -114,24 +114,13 @@ class ProjectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  plural('dashboard.projection', DailyProjection.horizonDays),
-                  style: text.titleSmall,
-                ),
-              ),
-              Text(
-                tr(
-                  'dashboard.averagePerDay',
-                  namedArgs: <String, String>{
-                    'amount': money.format(projection.averageSpendPerDay),
-                  },
-                ),
-                style: text.bodySmall,
-              ),
-            ],
+          // The average sits under the main figure, where it qualifies the
+          // date; repeating it here would say the same thing twice.
+          Center(
+            child: Text(
+              plural('dashboard.projection', DailyProjection.horizonDays),
+              style: text.titleSmall,
+            ),
           ),
           const SizedBox(height: SageSpace.md),
           SizedBox(

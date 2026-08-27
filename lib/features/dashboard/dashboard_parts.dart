@@ -32,6 +32,7 @@ class MainFigure extends StatelessWidget {
     required this.lastCoveredDay,
     required this.dates,
     required this.today,
+    this.subtitle,
     this.onTap,
     super.key,
   });
@@ -50,6 +51,11 @@ class MainFigure extends StatelessWidget {
   final CalendarDate? lastCoveredDay;
   final DateLabels dates;
   final CalendarDate today;
+
+  /// The line under the figure that says what it rests on — Flow puts its
+  /// average daily spend here, because the date only means something once you
+  /// know the rate it was computed at (spec 4.6).
+  final String? subtitle;
 
   final VoidCallback? onTap;
 
@@ -100,6 +106,14 @@ class MainFigure extends StatelessWidget {
                 ],
               ],
             ),
+            if (subtitle != null) ...<Widget>[
+              const SizedBox(height: SageSpace.xs),
+              Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: text.bodySmall?.copyWith(color: sage.inkLabel),
+              ),
+            ],
             if (short && overspend < Decimal.zero) ...<Widget>[
               const SizedBox(height: SageSpace.xs),
               Text(
