@@ -1,7 +1,7 @@
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/domain/ledger/ledger_walker.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/domain/ledger/ledger_walker.dart';
 
 /// A card with the standard inner gutter. The look itself comes from
 /// `cardTheme`, which already handles the light/dark elevation swap.

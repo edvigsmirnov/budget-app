@@ -1,6 +1,6 @@
-import 'package:budget_app/domain/schedule/working_days.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/domain/schedule/working_days.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 /// When an income might land, and the one date the maths uses.
 ///

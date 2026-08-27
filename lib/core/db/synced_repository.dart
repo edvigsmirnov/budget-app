@@ -1,6 +1,6 @@
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/time/space_clock.dart';
 import 'package:drift/drift.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/time/space_clock.dart';
 import 'package:uuid/uuid.dart';
 
 /// Base for every repository over a syncable table.

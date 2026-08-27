@@ -1,6 +1,6 @@
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 /// Money as an exact decimal string.
 ///

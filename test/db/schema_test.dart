@@ -1,10 +1,10 @@
-import 'package:budget_app/app/startup.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/app/startup.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 /// Guards the schema invariants the whole sync design rests on. Breaking one

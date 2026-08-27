@@ -1,6 +1,6 @@
-import 'package:budget_app/core/format/money_input.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/core/format/money_input.dart';
 
 void main() {
   Decimal? parse(String input) => parseMoney(input);

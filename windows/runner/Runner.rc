@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "dev.edvig" "\0"
-            VALUE "FileDescription", "budget_app" "\0"
+            VALUE "FileDescription", "sielto" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "budget_app" "\0"
+            VALUE "InternalName", "sielto" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 dev.edvig. All rights reserved." "\0"
-            VALUE "OriginalFilename", "budget_app.exe" "\0"
-            VALUE "ProductName", "budget_app" "\0"
+            VALUE "OriginalFilename", "sielto.exe" "\0"
+            VALUE "ProductName", "sielto" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

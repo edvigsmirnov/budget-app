@@ -1,8 +1,8 @@
-import 'package:budget_app/core/db/app_database.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/core/db/app_database.dart';
 
 import 'generated_migrations/schema.dart';
 

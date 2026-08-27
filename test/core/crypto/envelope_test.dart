@@ -1,9 +1,9 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:budget_app/core/crypto/database_key.dart';
-import 'package:budget_app/core/crypto/envelope.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/core/crypto/database_key.dart';
+import 'package:sielto/core/crypto/envelope.dart';
 
 void main() {
   Uint8List randomBytes(int n) {

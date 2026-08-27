@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.edvig.budget_app"
+    namespace = "dev.edvig.sielto"
     // Above flutter.compileSdkVersion (36) because flutter_secure_storage
     // compiles against 37. compileSdk only widens the API surface available at
     // compile time; minSdk and targetSdk below are untouched, so neither the
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "dev.edvig.budget_app"
+        applicationId = "dev.edvig.sielto"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // From pubspec, or from --build-number/--build-name in CI.

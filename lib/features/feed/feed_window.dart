@@ -1,7 +1,7 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 /// The slice of dates the Feed renders.
 ///

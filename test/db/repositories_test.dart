@@ -1,17 +1,17 @@
-import 'package:budget_app/app/startup.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/db/repositories/budget_period_repository.dart';
-import 'package:budget_app/core/db/repositories/category_repository.dart';
-import 'package:budget_app/core/db/repositories/income_repository.dart';
-import 'package:budget_app/core/db/repositories/payment_repository.dart';
-import 'package:budget_app/core/db/repositories/space_repository.dart';
-import 'package:budget_app/core/time/space_clock.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:decimal/decimal.dart';
 // drift exports isNull/isNotNull as SQL expressions; the matchers win here.
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/app/startup.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/budget_period_repository.dart';
+import 'package:sielto/core/db/repositories/category_repository.dart';
+import 'package:sielto/core/db/repositories/income_repository.dart';
+import 'package:sielto/core/db/repositories/payment_repository.dart';
+import 'package:sielto/core/db/repositories/space_repository.dart';
+import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 /// The invariants the spec puts in the data layer on purpose, so no screen can
 /// route around them.

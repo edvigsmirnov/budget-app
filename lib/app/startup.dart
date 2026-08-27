@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:budget_app/core/crypto/database_key.dart';
-import 'package:budget_app/core/crypto/key_store.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/time/space_clock.dart';
 import 'package:drift/native.dart';
 import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sielto/core/crypto/database_key.dart';
+import 'package:sielto/core/crypto/key_store.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/time/space_clock.dart';
 
 /// Outcome of opening the encrypted database at launch.
 sealed class Startup {
@@ -56,7 +56,7 @@ Future<Startup> openDatabase({Directory? directory}) async {
 Future<Startup> startOver(DatabaseKeyManager manager) async {
   await manager.destroy();
   for (final String suffix in <String>['', '-wal', '-shm']) {
-    final File f = File('${manager.directory.path}/budget.sqlite$suffix');
+    final File f = File('${manager.directory.path}/sielto.sqlite$suffix');
     if (f.existsSync()) f.deleteSync();
   }
   return openDatabase(directory: manager.directory);

@@ -1,12 +1,12 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/domain/ledger/available_money.dart';
-import 'package:budget_app/domain/ledger/ledger_entry.dart';
-import 'package:budget_app/domain/ledger/ledger_walker.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/domain/ledger/available_money.dart';
+import 'package:sielto/domain/ledger/ledger_entry.dart';
+import 'package:sielto/domain/ledger/ledger_walker.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 /// Every live payment of the current Space.
 final StreamProvider<List<Payment>> spacePaymentsProvider =

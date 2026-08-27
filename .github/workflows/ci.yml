@@ -91,13 +91,13 @@ jobs:
       - name: Name the artifact
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk \
-            "budget-app-$BUILD_NAME+$BUILD_NUMBER.apk"
+            "sielto-app-$BUILD_NAME+$BUILD_NUMBER.apk"
 
       # archive: false uploads the file as-is. The artifact takes the file's
       # name; `name` is ignored.
       - uses: actions/upload-artifact@v7
         with:
-          path: budget-app-*.apk
+          path: sielto-app-*.apk
           archive: false
           if-no-files-found: error
 
@@ -122,12 +122,12 @@ jobs:
         shell: pwsh
 
       - name: Package
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "budget-app-$env:BUILD_NAME+$env:BUILD_NUMBER-windows.zip"
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "sielto-app-$env:BUILD_NAME+$env:BUILD_NUMBER-windows.zip"
         shell: pwsh
 
       - uses: actions/upload-artifact@v7
         with:
-          path: budget-app-*-windows.zip
+          path: sielto-app-*-windows.zip
           archive: false
           if-no-files-found: error
 
@@ -167,22 +167,22 @@ jobs:
           mkdir -p "$APPDIR/usr/bin"
           cp -r build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
 
-          cat > "$APPDIR/budget_app.desktop" <<'DESKTOP'
+          cat > "$APPDIR/sielto.desktop" <<'DESKTOP'
           [Desktop Entry]
           Type=Application
-          Name=Budget
-          Exec=budget_app
-          Icon=budget_app
+          Name=Sielto
+          Exec=sielto
+          Icon=sielto
           Categories=Office;Finance;
           DESKTOP
 
           # appimagetool requires an icon next to the .desktop file.
-          cp linux/runner/resources/budget_app.png "$APPDIR/budget_app.png"
+          cp linux/runner/resources/sielto.png "$APPDIR/sielto.png"
 
           cat > "$APPDIR/AppRun" <<'APPRUN'
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
-          exec "$HERE/usr/bin/budget_app" "$@"
+          exec "$HERE/usr/bin/sielto" "$@"
           APPRUN
           chmod +x "$APPDIR/AppRun"
 
@@ -190,10 +190,10 @@ jobs:
           chmod +x appimagetool-x86_64.AppImage
           # --appimage-extract-and-run: runners have no FUSE to mount the tool.
           ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
-            "$APPDIR" "budget-app-$BUILD_NAME+$BUILD_NUMBER-x86_64.AppImage"
+            "$APPDIR" "sielto-app-$BUILD_NAME+$BUILD_NUMBER-x86_64.AppImage"
 
       - uses: actions/upload-artifact@v7
         with:
-          path: budget-app-*.AppImage
+          path: sielto-app-*.AppImage
           archive: false
           if-no-files-found: error

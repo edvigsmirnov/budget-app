@@ -1,18 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:budget_app/core/l10n/app_locales.dart';
-import 'package:budget_app/core/l10n/pseudo_asset_loader.dart';
-import 'package:budget_app/core/l10n/pseudolocalize.dart';
-import 'package:budget_app/core/settings/local_settings.dart';
-import 'package:budget_app/core/settings/settings_providers.dart';
-import 'package:budget_app/core/theme/sage_theme.dart';
-import 'package:budget_app/features/dev/token_gallery_page.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sielto/core/l10n/app_locales.dart';
+import 'package:sielto/core/l10n/pseudo_asset_loader.dart';
+import 'package:sielto/core/l10n/pseudolocalize.dart';
+import 'package:sielto/core/settings/local_settings.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
+import 'package:sielto/core/theme/sage_theme.dart';
+import 'package:sielto/features/dev/token_gallery_page.dart';
 
 /// Reads dictionaries off disk instead of through rootBundle, whose asset
 /// loads never complete past the first widget test in a file. The JSON under

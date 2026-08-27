@@ -1,5 +1,5 @@
-import 'package:budget_app/core/settings/local_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/core/settings/local_settings.dart';
 
 /// Overridden at startup, once the store has been read. Every device-local
 /// preference goes through here.

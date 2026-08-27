@@ -1,13 +1,13 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/features/feed/feed_model.dart';
-import 'package:budget_app/features/incomes/income_form_page.dart';
-import 'package:budget_app/features/payments/payment_form_page.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/feed/feed_model.dart';
+import 'package:sielto/features/incomes/income_form_page.dart';
+import 'package:sielto/features/payments/payment_form_page.dart';
 
 /// The FAB menu (spec 6.5).
 ///

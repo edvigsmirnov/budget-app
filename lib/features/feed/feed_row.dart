@@ -1,11 +1,11 @@
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/format/money_format.dart';
-import 'package:budget_app/core/settings/local_settings.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/features/categories/category_colors.dart';
-import 'package:budget_app/features/feed/feed_model.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/money_format.dart';
+import 'package:sielto/core/settings/local_settings.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/features/categories/category_colors.dart';
+import 'package:sielto/features/feed/feed_model.dart';
 
 /// Row heights per density (spec 4.5). Compact drops to title and amount on
 /// one line; spacious adds category and status underneath.

@@ -1,18 +1,18 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/app/startup.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/l10n/app_locales.dart';
-import 'package:budget_app/core/l10n/pseudo_asset_loader.dart';
-import 'package:budget_app/core/settings/local_settings.dart';
-import 'package:budget_app/core/settings/settings_providers.dart';
-import 'package:budget_app/core/theme/sage_theme.dart';
-import 'package:budget_app/core/theme/theme_mode_controller.dart';
-import 'package:budget_app/features/onboarding/onboarding_page.dart';
-import 'package:budget_app/features/security/decryption_failure_page.dart';
-import 'package:budget_app/features/shell/main_shell.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/app/startup.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/l10n/app_locales.dart';
+import 'package:sielto/core/l10n/pseudo_asset_loader.dart';
+import 'package:sielto/core/settings/local_settings.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
+import 'package:sielto/core/theme/sage_theme.dart';
+import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/features/onboarding/onboarding_page.dart';
+import 'package:sielto/features/security/decryption_failure_page.dart';
+import 'package:sielto/features/shell/main_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -132,7 +132,7 @@ class BudgetApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       // Product name, not UI copy: the same in every locale.
-      title: 'Budget',
+      title: 'Sielto',
       debugShowCheckedModeBanner: false,
       theme: SageTheme.light,
       darkTheme: SageTheme.dark,

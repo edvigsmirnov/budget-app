@@ -1,9 +1,9 @@
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/ui/sage_widgets.dart';
-import 'package:budget_app/features/dashboard/dashboard_page.dart';
-import 'package:budget_app/features/feed/feed_page.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/dashboard/dashboard_page.dart';
+import 'package:sielto/features/feed/feed_page.dart';
 
 /// The three main screens and the two ways to move between them: the bottom
 /// bar and a horizontal swipe, both live at once (spec 4.1).

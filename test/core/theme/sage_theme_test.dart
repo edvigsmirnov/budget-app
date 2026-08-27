@@ -1,7 +1,7 @@
-import 'package:budget_app/core/theme/sage_theme.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/core/theme/sage_theme.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
 
 import 'sage_contrast.dart';
 

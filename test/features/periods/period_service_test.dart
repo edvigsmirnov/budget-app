@@ -1,14 +1,14 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/app/startup.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/time/space_clock.dart';
-import 'package:budget_app/domain/schedule/working_days.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
-import 'package:budget_app/features/periods/period_service.dart';
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/app/startup.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/working_days.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/periods/period_service.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);

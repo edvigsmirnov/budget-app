@@ -1,15 +1,17 @@
 import 'dart:io';
 
-import 'package:budget_app/core/crypto/database_key.dart';
-import 'package:budget_app/core/db/converters.dart';
-import 'package:budget_app/core/db/tables.dart';
-// The generated part file names these types; they must be in scope here.
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
+// calendar_date and enums are imported for the generated part file rather than
+// for this one: it names those types, and they must be in scope here. Errors
+// inside a .g.dart never reach `flutter analyze` — only a build or a test.
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
+import 'package:sielto/core/crypto/database_key.dart';
+import 'package:sielto/core/db/converters.dart';
+import 'package:sielto/core/db/tables.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 part 'app_database.g.dart';
@@ -106,7 +108,7 @@ Future<void> _createIndexes(DatabaseConnectionUser db) async {
 QueryExecutor openEncryptedDatabase({
   required Directory directory,
   required DatabaseKey key,
-  String fileName = 'budget.sqlite',
+  String fileName = 'sielto.sqlite',
 }) {
   final File file = File(p.join(directory.path, fileName));
   directory.createSync(recursive: true);

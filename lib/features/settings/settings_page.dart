@@ -1,14 +1,14 @@
-import 'package:budget_app/core/l10n/app_locales.dart';
-import 'package:budget_app/core/settings/local_settings.dart';
-import 'package:budget_app/core/settings/settings_providers.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/theme/theme_mode_controller.dart';
-import 'package:budget_app/core/ui/sage_widgets.dart';
-import 'package:budget_app/features/categories/categories_page.dart';
-import 'package:budget_app/features/spaces/spaces_page.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/core/l10n/app_locales.dart';
+import 'package:sielto/core/settings/local_settings.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/categories/categories_page.dart';
+import 'package:sielto/features/spaces/spaces_page.dart';
 
 /// Profile and app settings (spec 4.2).
 ///

@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/theme/theme_mode_controller.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/theme/theme_mode_controller.dart';
 
 /// Renders every token and primitive for visual comparison against the design
 /// canvas, and switches theme and locale so both audits run from one screen.

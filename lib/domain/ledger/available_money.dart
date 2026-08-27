@@ -1,7 +1,7 @@
-import 'package:budget_app/domain/ledger/ledger_entry.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:decimal/decimal.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/domain/ledger/ledger_entry.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 /// What the ledger walk starts from, and which entries it may see.
 ///

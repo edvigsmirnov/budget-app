@@ -1,9 +1,9 @@
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/db/synced_repository.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/synced_repository.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 /// Raised when the last anchor of an income_driven Space would be removed or
 /// demoted.

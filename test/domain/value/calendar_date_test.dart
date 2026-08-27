@@ -1,5 +1,5 @@
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 void main() {
   test('parses and renders ISO days', () {

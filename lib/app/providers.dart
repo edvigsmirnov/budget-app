@@ -1,12 +1,12 @@
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/db/repositories/budget_period_repository.dart';
-import 'package:budget_app/core/db/repositories/category_repository.dart';
-import 'package:budget_app/core/db/repositories/income_repository.dart';
-import 'package:budget_app/core/db/repositories/payment_repository.dart';
-import 'package:budget_app/core/db/repositories/space_repository.dart';
-import 'package:budget_app/core/settings/settings_providers.dart';
-import 'package:budget_app/core/time/space_clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/budget_period_repository.dart';
+import 'package:sielto/core/db/repositories/category_repository.dart';
+import 'package:sielto/core/db/repositories/income_repository.dart';
+import 'package:sielto/core/db/repositories/payment_repository.dart';
+import 'package:sielto/core/db/repositories/space_repository.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
+import 'package:sielto/core/time/space_clock.dart';
 
 /// Set once the database is open, by the startup path in main.dart.
 final Provider<AppDatabase> databaseProvider = Provider<AppDatabase>(

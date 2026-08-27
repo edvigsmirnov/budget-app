@@ -1,6 +1,6 @@
-import 'package:budget_app/core/db/converters.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:drift/drift.dart';
+import 'package:sielto/core/db/converters.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 /// Local schema, mirroring the Postgres definitions in the spec.
 ///

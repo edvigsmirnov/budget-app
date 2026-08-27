@@ -1,7 +1,7 @@
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
-import 'package:budget_app/features/feed/feed_model.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/feed/feed_model.dart';
 
 /// What a drag in the Feed turned out to mean.
 sealed class ReorderOutcome {

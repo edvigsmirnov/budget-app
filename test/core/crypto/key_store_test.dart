@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:budget_app/core/crypto/database_key.dart';
-import 'package:budget_app/core/crypto/key_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/core/crypto/database_key.dart';
+import 'package:sielto/core/crypto/key_store.dart';
 
 /// Stands in for the platform keystore, which no test can reach.
 class _MemoryKeyStore implements WrappingKeyStore {

@@ -3,10 +3,10 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:budget_app/core/crypto/database_key.dart';
-import 'package:budget_app/core/crypto/envelope.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
+import 'package:sielto/core/crypto/database_key.dart';
+import 'package:sielto/core/crypto/envelope.dart';
 
 /// Where the envelope A wrapping key lives. Abstracted so tests can run
 /// without a platform keystore, and so the Linux passphrase fallback

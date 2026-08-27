@@ -1,7 +1,7 @@
-import 'package:budget_app/core/l10n/app_locales.dart';
-import 'package:budget_app/core/l10n/pseudolocalize.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/widgets.dart';
+import 'package:sielto/core/l10n/app_locales.dart';
+import 'package:sielto/core/l10n/pseudolocalize.dart';
 
 /// Serves [AppLocales.pseudo] by pseudolocalizing the fallback dictionary at
 /// load time, so no pseudo translations are checked in and the harness cannot

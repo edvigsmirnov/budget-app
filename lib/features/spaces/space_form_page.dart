@@ -1,16 +1,16 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/format/currencies.dart';
-import 'package:budget_app/core/settings/settings_providers.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/time/space_clock.dart';
-import 'package:budget_app/core/ui/sage_widgets.dart';
-import 'package:budget_app/domain/value/enums.dart';
-import 'package:budget_app/features/spaces/starter_categories.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/currencies.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/spaces/starter_categories.dart';
 
 /// Creating a Space (spec 3.1).
 ///

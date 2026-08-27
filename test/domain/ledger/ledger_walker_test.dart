@@ -1,9 +1,9 @@
-import 'package:budget_app/domain/ledger/ledger_entry.dart';
-import 'package:budget_app/domain/ledger/ledger_walker.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/domain/ledger/ledger_entry.dart';
+import 'package:sielto/domain/ledger/ledger_walker.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);

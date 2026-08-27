@@ -1,6 +1,6 @@
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/domain/schedule/income_schedule.dart';
-import 'package:budget_app/domain/value/enums.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 /// Turns a stored recurrence rule into the schedule the M2 engine understands.
 ///

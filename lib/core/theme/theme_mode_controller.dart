@@ -1,6 +1,6 @@
-import 'package:budget_app/core/settings/settings_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
 
 /// Theme selection. Device-local, not synced: members of a shared Space set
 /// this independently (plan section 5, rule 5).

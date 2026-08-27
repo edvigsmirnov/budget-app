@@ -1,6 +1,6 @@
-import 'package:budget_app/core/theme/sage_tokens.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
 
 /// How far an edit to one occurrence of a repeating payment reaches
 /// (spec 6.3).

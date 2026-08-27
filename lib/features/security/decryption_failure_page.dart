@@ -1,6 +1,6 @@
-import 'package:budget_app/core/theme/sage_tokens.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
 
 /// Shown when the database file is present but its key is not.
 ///

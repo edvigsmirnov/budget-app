@@ -1,7 +1,7 @@
-import 'package:budget_app/domain/schedule/income_window.dart';
-import 'package:budget_app/domain/schedule/working_days.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/domain/schedule/income_window.dart';
+import 'package:sielto/domain/schedule/working_days.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 

@@ -1,8 +1,8 @@
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/db/repositories/payment_repository.dart';
-import 'package:budget_app/core/db/synced_repository.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:drift/drift.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/payment_repository.dart';
+import 'package:sielto/core/db/synced_repository.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 /// Raised when a rename is attempted on a category that already has visible
 /// payments. Renaming then would rewrite history the user actually recorded

@@ -1,4 +1,4 @@
-package dev.edvig.budget_app
+package dev.edvig.sielto
 
 import io.flutter.embedding.android.FlutterActivity
 

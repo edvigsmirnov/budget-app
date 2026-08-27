@@ -22,20 +22,16 @@ Open source, distributed outside the app stores, supported by voluntary donation
 
 Early development. Nothing is released yet.
 
-See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for the phased
-build plan, the settled design decisions, and the resolutions to every open
-question in the specification.
-
 ## Platforms
 
 Android, Windows and Linux. Apple platforms are out of scope for this development
-cycle — see G3 in the plan for why.
+cycle.
 
 ## Building
 
 Requires the Flutter SDK on `stable`. Android builds additionally need JDK 17 and
-the Android SDK; Windows needs the Visual Studio C++ build tools; Linux needs the
-GTK development headers.
+the Android SDK; Windows needs the Visual Studio C++ build tools, including the
+ATL component; Linux needs the GTK development headers and `libsecret-1-dev`.
 
 ```sh
 flutter pub get

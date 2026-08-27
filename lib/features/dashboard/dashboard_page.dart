@@ -1,18 +1,18 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/format/date_format.dart';
-import 'package:budget_app/core/format/money_format.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/ui/sage_widgets.dart';
-import 'package:budget_app/domain/ledger/ledger_walker.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/features/dashboard/balance_sheet.dart';
-import 'package:budget_app/features/shell/app_header.dart';
-import 'package:budget_app/features/space/space_ledger.dart';
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/date_format.dart';
+import 'package:sielto/core/format/money_format.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/domain/ledger/ledger_walker.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/dashboard/balance_sheet.dart';
+import 'package:sielto/features/shell/app_header.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// Aggregated figures for the current context — no individual records
 /// (spec 4.4). Flow has one continuous context, so there are no period arrows.

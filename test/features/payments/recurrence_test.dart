@@ -1,6 +1,6 @@
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/features/payments/recurrence.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/payments/recurrence.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 

@@ -1,14 +1,14 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/format/money_format.dart';
-import 'package:budget_app/core/format/money_input.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/ui/sage_widgets.dart';
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/money_format.dart';
+import 'package:sielto/core/format/money_input.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 
 /// "Set current balance" (spec 4.6).
 ///

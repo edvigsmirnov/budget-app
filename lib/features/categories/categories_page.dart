@@ -1,17 +1,17 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/db/repositories/category_repository.dart';
-import 'package:budget_app/core/db/repositories/payment_repository.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/ui/dialogs.dart';
-import 'package:budget_app/core/ui/sage_widgets.dart';
-import 'package:budget_app/features/categories/category_colors.dart';
-import 'package:budget_app/features/categories/category_form_sheet.dart';
-import 'package:budget_app/features/space/space_ledger.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/category_repository.dart';
+import 'package:sielto/core/db/repositories/payment_repository.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/categories/category_colors.dart';
+import 'package:sielto/features/categories/category_form_sheet.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// The category list (spec 7): add, reorder, recolour, soft-delete with undo.
 ///

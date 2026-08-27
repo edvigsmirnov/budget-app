@@ -1,12 +1,12 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/theme/sage_tokens.dart';
-import 'package:budget_app/core/ui/sage_widgets.dart';
-import 'package:budget_app/features/settings/space_settings_page.dart';
-import 'package:budget_app/features/spaces/space_form_page.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/settings/space_settings_page.dart';
+import 'package:sielto/features/spaces/space_form_page.dart';
 
 /// The Spaces switcher (spec 3.1).
 ///

@@ -1,13 +1,13 @@
-import 'package:budget_app/app/providers.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/domain/period/period_materializer.dart';
-import 'package:budget_app/domain/schedule/income_schedule.dart';
-import 'package:budget_app/domain/schedule/income_window.dart';
-import 'package:budget_app/domain/schedule/working_days.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
-import 'package:budget_app/features/periods/schedule_mapping.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/domain/period/period_materializer.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
+import 'package:sielto/domain/schedule/income_window.dart';
+import 'package:sielto/domain/schedule/working_days.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/periods/schedule_mapping.dart';
 
 /// What a refresh changed, for the caller to report.
 @immutable

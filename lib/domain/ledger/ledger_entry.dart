@@ -1,7 +1,7 @@
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:decimal/decimal.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 /// One row on the ledger, whether it started life as a payment or an income.
 ///

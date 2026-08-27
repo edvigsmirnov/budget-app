@@ -1,5 +1,5 @@
-import 'package:budget_app/domain/value/calendar_date.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 /// What may still be edited in a period (spec 5.5).
 enum FreezeState {

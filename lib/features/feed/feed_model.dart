@@ -1,8 +1,8 @@
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:decimal/decimal.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 
 /// One row of the Feed, whichever table it came from.
 ///

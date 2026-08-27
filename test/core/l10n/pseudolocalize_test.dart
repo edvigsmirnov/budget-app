@@ -1,5 +1,5 @@
-import 'package:budget_app/core/l10n/pseudolocalize.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/core/l10n/pseudolocalize.dart';
 
 void main() {
   test('brackets the string so truncation shows at either end', () {

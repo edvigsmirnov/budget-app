@@ -1,4 +1,4 @@
-import 'package:budget_app/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 
 /// How often a repeating payment recurs (spec 6.3).
 enum RecurrenceInterval { monthly, weekly }

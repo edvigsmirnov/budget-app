@@ -1,15 +1,15 @@
 import 'dart:io';
 
-import 'package:budget_app/app/startup.dart';
-import 'package:budget_app/core/crypto/database_key.dart';
-import 'package:budget_app/core/db/app_database.dart';
-import 'package:budget_app/core/db/synced_repository.dart';
-import 'package:budget_app/core/time/space_clock.dart';
-import 'package:budget_app/domain/value/calendar_date.dart';
-import 'package:budget_app/domain/value/enums.dart';
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/app/startup.dart';
+import 'package:sielto/core/crypto/database_key.dart';
+import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/synced_repository.dart';
+import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 /// A concrete repository, only so the base class rules can be exercised.
@@ -55,7 +55,7 @@ void main() {
     await _seed(db, title: 'Rent for the flat');
     await db.close();
 
-    final File file = File('${dir.path}/budget.sqlite');
+    final File file = File('${dir.path}/sielto.sqlite');
     final List<int> bytes = file.readAsBytesSync();
     expect(
       String.fromCharCodes(bytes.take(16)),
@@ -69,7 +69,7 @@ void main() {
     await _seed(db);
     await db.close();
 
-    final Database raw = sqlite3.open('${dir.path}/budget.sqlite');
+    final Database raw = sqlite3.open('${dir.path}/sielto.sqlite');
     addTearDown(raw.close);
     expect(
       () => raw.select('SELECT * FROM payments'),
