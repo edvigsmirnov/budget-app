@@ -265,6 +265,21 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     notes: notes,
   );
 
+  /// Every live occurrence of a series, in date order.
+  ///
+  /// A repeating payment has no rule row of its own — it is these rows and
+  /// nothing else (spec 6.3) — so counting them is the only way to say how
+  /// long the series runs.
+  Future<List<Payment>> seriesOf(String groupRecurringId) =>
+      (selectAlive()
+            ..where(
+              ($PaymentsTable t) => t.groupRecurringId.equals(groupRecurringId),
+            )
+            ..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
+              ($PaymentsTable t) => OrderingTerm(expression: t.dueDate),
+            ]))
+          .get();
+
   /// Soft-deletes a whole series, or its future half.
   Future<int> deleteSeries(String groupRecurringId, {CalendarDate? from}) {
     final ({String author, DateTime editedAt}) s = stamp();

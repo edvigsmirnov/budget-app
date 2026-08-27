@@ -126,6 +126,14 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   PeriodPair get _periods =>
       periodsAround(ref.read(incomePeriodsProvider), _date!);
 
+  /// How many occurrences the series holds, and which of them this is.
+  ///
+  /// Read on load so the form can say it repeats before Save asks how far a
+  /// change should reach. A repeating payment has no rule to open — it is its
+  /// occurrences (spec 6.3) — so this is the only place that fact can appear.
+  int _seriesLength = 0;
+  int _seriesPosition = 0;
+
   @override
   void initState() {
     super.initState();
@@ -171,6 +179,17 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
           periodsAround(ref.read(incomePeriodsProvider), row.dueDate),
         );
         _loadedPeriodChoice = _periodChoice;
+
+        final String? group = row.groupRecurringId;
+        if (group != null) {
+          final List<Payment> series = await ref
+              .read(repositoriesProvider)
+              .payments
+              .seriesOf(group);
+          _seriesLength = series.length;
+          _seriesPosition =
+              series.indexWhere((Payment p) => p.id == row.id) + 1;
+        }
       }
     } else if (draft != null) {
       _title.text = draft.title;
@@ -376,6 +395,36 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// Removes the whole repeating payment, or only what has not happened yet.
+  ///
+  /// The occurrence delete in the app bar takes one row; a series needs its
+  /// own action, because deleting twelve months of rent one month at a time is
+  /// not a thing anyone should have to do (spec 6.3).
+  Future<void> _deleteSeries() async {
+    final Payment? existing = _existing;
+    final String? group = existing?.groupRecurringId;
+    if (existing == null || group == null) return;
+
+    final SeriesScope scope = await askSeriesDeleteScope(context);
+    if (scope == SeriesScope.cancelled || !mounted) return;
+    if (existing.expenseType == ExpenseType.mandatory &&
+        !await confirmMandatory(context)) {
+      return;
+    }
+    if (!mounted) return;
+
+    await guardFreeze(context, () async {
+      final Repositories repos = ref.read(repositoriesProvider);
+      await repos.payments.deleteSeries(
+        group,
+        // "From here on" keeps the months already behind us: they happened.
+        from: scope == SeriesScope.allFuture ? existing.dueDate : null,
+      );
+    });
+    ref.invalidate(periodRefreshProvider);
+    if (mounted) Navigator.of(context).pop();
+  }
+
   /// A record outside a series always edits itself; one inside asks first
   /// (spec 6.3).
   Future<SeriesScope> _resolveScope(Payment payment) async {
@@ -444,6 +493,14 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                 padding: const EdgeInsets.all(SageSpace.formGutter),
                 children: <Widget>[
                   if (_isFrozen) const FreezeNotice(),
+                  if (_seriesLength > 1) ...<Widget>[
+                    _SeriesNotice(
+                      position: _seriesPosition,
+                      length: _seriesLength,
+                      onDeleteSeries: _isFrozen ? null : _deleteSeries,
+                    ),
+                    const SizedBox(height: SageSpace.md),
+                  ],
                   LabelledField(
                     label: tr('payment.fieldTitle'),
                     child: TextField(
@@ -831,6 +888,81 @@ class _LivePreview extends ConsumerWidget {
                 },
               ),
               style: text.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Says that this payment is one of many, and offers the series-wide delete.
+///
+/// A repeating payment has no rule row to open — it is its occurrences and
+/// nothing more (spec 6.3) — so this banner is where the series exists as a
+/// thing at all. Without it the first sign is the scope question after Save,
+/// which is too late to be information.
+class _SeriesNotice extends StatelessWidget {
+  const _SeriesNotice({
+    required this.position,
+    required this.length,
+    required this.onDeleteSeries,
+  });
+
+  final int position;
+  final int length;
+
+  /// Null in a closed period, where deleting anything is refused (spec 5.5).
+  final VoidCallback? onDeleteSeries;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(SageSpace.md),
+      decoration: BoxDecoration(
+        color: sage.canvas,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+        border: Border.all(color: sage.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.repeat, size: 18, color: sage.inkLabel),
+              const SizedBox(width: SageSpace.sm),
+              Expanded(
+                child: Text(
+                  tr(
+                    'payment.seriesPosition',
+                    namedArgs: <String, String>{
+                      'position': '$position',
+                      'count': '$length',
+                    },
+                  ),
+                  style: text.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: SageSpace.xs),
+          Text(
+            tr('payment.seriesHint'),
+            style: text.bodySmall?.copyWith(color: sage.inkSecondary),
+          ),
+          if (onDeleteSeries != null) ...<Widget>[
+            const SizedBox(height: SageSpace.xs),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                onPressed: onDeleteSeries,
+                style: TextButton.styleFrom(foregroundColor: sage.danger),
+                child: Text(tr('payment.deleteSeries')),
+              ),
             ),
           ],
         ],

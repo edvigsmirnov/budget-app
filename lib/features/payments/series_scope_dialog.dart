@@ -18,7 +18,33 @@ enum SeriesScope {
 }
 
 /// Asked whenever a record that belongs to a series is saved.
-Future<SeriesScope> askSeriesScope(BuildContext context) async {
+Future<SeriesScope> askSeriesScope(BuildContext context) =>
+    _askScope(context, title: tr('series.title'), body: tr('series.body'));
+
+/// Asked before removing a repeating payment.
+///
+/// Only two answers: the whole thing, or everything from this occurrence on.
+/// "This one only" is the app bar's delete, and offering it twice under
+/// different words is how a user ends up deleting the wrong thing.
+Future<SeriesScope> askSeriesDeleteScope(BuildContext context) => _askScope(
+  context,
+  title: tr('series.deleteTitle'),
+  body: tr('series.deleteBody'),
+  scopes: const <SeriesScope>[SeriesScope.allFuture, SeriesScope.wholeSeries],
+  isDestructive: true,
+);
+
+Future<SeriesScope> _askScope(
+  BuildContext context, {
+  required String title,
+  required String body,
+  List<SeriesScope> scopes = const <SeriesScope>[
+    SeriesScope.thisOne,
+    SeriesScope.allFuture,
+    SeriesScope.wholeSeries,
+  ],
+  bool isDestructive = false,
+}) async {
   final SeriesScope? answer = await showDialog<SeriesScope>(
     context: context,
     builder: (BuildContext context) => AlertDialog(
@@ -26,22 +52,15 @@ Future<SeriesScope> askSeriesScope(BuildContext context) async {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(SageRadius.card),
       ),
-      title: Text(
-        tr('series.title'),
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      content: Text(
-        tr('series.body'),
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
+      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      content: Text(body, style: Theme.of(context).textTheme.bodyMedium),
       actions: <Widget>[
-        for (final SeriesScope scope in <SeriesScope>[
-          SeriesScope.thisOne,
-          SeriesScope.allFuture,
-          SeriesScope.wholeSeries,
-        ])
+        for (final SeriesScope scope in scopes)
           TextButton(
             onPressed: () => Navigator.of(context).pop(scope),
+            style: isDestructive
+                ? TextButton.styleFrom(foregroundColor: context.sage.danger)
+                : null,
             child: Text(tr('series.${scope.name}')),
           ),
       ],
