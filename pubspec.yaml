@@ -27,6 +27,9 @@ dependencies:
   # The device's IANA zone name, to seed a new Space's timezone. Reads
   # /etc/localtime on Linux and the Win32 API on Windows; no system packages.
   flutter_timezone: ^5.1.0
+  # The only network call the app makes before M8: the holiday list, and only
+  # with explicit consent (spec 5.1.1).
+  http: ^1.6.0
   # Number and date formatting. Locale comes from the device, currency symbol
   # from the Space -- the two are passed to the formatter separately.
   intl: ^0.20.3
@@ -67,3 +70,6 @@ flutter:
     # One JSON per shipped locale. The pseudolocale has no file: it is derived
     # from en at load time by PseudoAssetLoader.
     - assets/translations/
+    # Public holidays for twenty countries, so the base case needs no network
+    # and no API at all (spec 5.1.1). One file per country.
+    - assets/holidays/

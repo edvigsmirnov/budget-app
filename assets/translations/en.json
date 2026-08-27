@@ -103,7 +103,10 @@
     "language": "Language",
     "data": "Data",
     "spaces": "Spaces",
-    "accountSettings": "Account settings"
+    "accountSettings": "Account settings",
+    "network": "Network",
+    "fullyOffline": "Fully offline",
+    "fullyOfflineHint": "No feature reaches the network while this is on."
   },
   "dashboard": {
     "freeMoney": "Free money",
@@ -342,5 +345,30 @@
     "amountUnknownTitle": "Income expected, amount not specified",
     "amountUnknownBody": "The expense side is fully computed. The remainder appears once the amount is known.",
     "setAmount": "Set the amount"
+  },
+  "holidays": {
+    "addDay": "Add a date",
+    "blockedByOffline": "Turned off by fully offline mode.",
+    "consentAllow": "Allow",
+    "consentBody": "The list comes from the public API at date.nager.at. Without it the app uses the holidays shipped with it, weekends and your own non-working days.",
+    "consentTitle": "Download public holidays?",
+    "country": "Country",
+    "countryHint": "Decides which public holidays apply where a Space has not set its own.",
+    "customTitle": "My non-working days",
+    "customWarning": "A non-working day only affects when income is expected to arrive. It marks nothing else.",
+    "dayTitle": "Name this day",
+    "dayTitleHint": "Company day, moved weekend, …",
+    "download": "Download the holiday list",
+    "incomplete": "This year's holidays are not loaded — the window may still narrow.",
+    "markDay": "Mark a non-working day",
+    "markDayHint": "Affects when income is expected, nothing else.",
+    "noCountry": "No country",
+    "noCountryBody": "Only weekends and your own non-working days count.",
+    "noCustomDays": "None yet.",
+    "notLoaded": "Not loaded for this year yet.",
+    "publicTitle": "Public holidays",
+    "searchCountry": "Search",
+    "source": "From the public API at date.nager.at.",
+    "title": "Weekends and holidays"
   }
 }

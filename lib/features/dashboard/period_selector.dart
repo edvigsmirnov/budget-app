@@ -48,10 +48,31 @@ class PeriodSelector extends ConsumerWidget {
         Expanded(
           child: Column(
             children: <Widget>[
-              Text(
-                _label(current, dates),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleSmall,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      _label(current, dates),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  // The window was computed without that year's holidays and
+                  // can still narrow. Unobtrusive on purpose: the figures are
+                  // usable, just conservative (spec 5.1.1).
+                  if (current.holidayDataIncomplete) ...<Widget>[
+                    const SizedBox(width: SageSpace.xs),
+                    Tooltip(
+                      message: tr('holidays.incomplete'),
+                      child: Icon(
+                        Icons.cloud_off_outlined,
+                        size: 14,
+                        color: context.sage.inkLabel,
+                      ),
+                    ),
+                  ],
+                ],
               ),
               if (_isCurrent(current, today))
                 Text(

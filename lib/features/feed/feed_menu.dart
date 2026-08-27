@@ -8,11 +8,13 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
+import 'package:sielto/features/settings/holidays_page.dart';
 
 /// The FAB menu (spec 6.5).
 ///
-/// "Mark a non-working day" is the third item in the spec; it belongs to the
-/// holiday work in M4 and is absent here rather than shown inert.
+/// The third item marks a non-working day. It is here as well as in Settings
+/// because that is where the user already is when they notice a day is wrong
+/// (spec 5.1.2, entry point 3).
 Future<void> showQuickAddMenu(
   BuildContext context,
   WidgetRef ref, {
@@ -37,6 +39,15 @@ Future<void> showQuickAddMenu(
           onTap: () {
             Navigator.of(sheetContext).pop();
             openIncomeForm(context, date: today);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.event_busy_outlined),
+          title: Text(tr('holidays.markDay')),
+          subtitle: Text(tr('holidays.markDayHint')),
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            markNonWorkingDay(context, ref, initial: today);
           },
         ),
       ],

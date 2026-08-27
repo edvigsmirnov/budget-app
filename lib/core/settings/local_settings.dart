@@ -29,6 +29,9 @@ class LocalSettings {
   static const String _keyFeedDensity = 'feed_density';
   static const String _keyCurrencyCode = 'currency_code';
   static const String _keyCurrentSpaceId = 'current_space_id';
+  static const String _keyDefaultCountry = 'default_country_code';
+  static const String _keyHolidayConsent = 'holiday_fetch_consent';
+  static const String _keyOfflineMode = 'fully_offline';
 
   final SharedPreferences _prefs;
 
@@ -93,6 +96,42 @@ class LocalSettings {
     }
     await _prefs.setString(_keyCurrentSpaceId, id);
   }
+
+  /// The country whose public holidays apply to every Space that has not set
+  /// its own (spec 5.1.1, priority level 2). Null means weekends and the
+  /// user's own non-working days decide, and holidays are ignored entirely —
+  /// a supported state, not a missing setting.
+  String? get defaultCountryCode => _prefs.getString(_keyDefaultCountry);
+
+  Future<void> setDefaultCountryCode(String? code) async {
+    if (code == null || code.trim().isEmpty) {
+      await _prefs.remove(_keyDefaultCountry);
+      return;
+    }
+    await _prefs.setString(_keyDefaultCountry, code.trim().toUpperCase());
+  }
+
+  /// Whether the holiday list may be downloaded (spec 5.1.1).
+  ///
+  /// Three states, and the third is the point: null means the question has not
+  /// been asked yet, which is what the one-time prompt keys off. A refusal is
+  /// remembered as false and never re-asked on its own.
+  bool? get holidayFetchAllowed => _prefs.getBool(_keyHolidayConsent);
+
+  Future<void> setHolidayFetchAllowed({required bool? allowed}) async {
+    if (allowed == null) {
+      await _prefs.remove(_keyHolidayConsent);
+      return;
+    }
+    await _prefs.setBool(_keyHolidayConsent, allowed);
+  }
+
+  /// The master switch (spec 1). While it is on nothing reaches the network,
+  /// whatever the per-feature consents say.
+  bool get fullyOffline => _prefs.getBool(_keyOfflineMode) ?? false;
+
+  Future<void> setFullyOffline({required bool value}) =>
+      _prefs.setBool(_keyOfflineMode, value);
 
   /// Enums are stored by name, not index: a reordered enum would otherwise
   /// reinterpret a stored value.

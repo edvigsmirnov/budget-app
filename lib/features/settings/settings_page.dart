@@ -8,6 +8,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/categories_page.dart';
+import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
 /// Profile and app settings (spec 4.2).
@@ -97,6 +98,26 @@ class SettingsPage extends ConsumerWidget {
                 builder: (BuildContext _) => const CategoriesPage(),
               ),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.event_busy_outlined),
+            title: Text(tr('holidays.title')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (BuildContext _) => const HolidaysPage(),
+              ),
+            ),
+          ),
+          const SizedBox(height: SageSpace.md),
+          _SectionLabel(tr('settings.network')),
+          SwitchListTile.adaptive(
+            secondary: const Icon(Icons.wifi_off_outlined),
+            title: Text(tr('settings.fullyOffline')),
+            subtitle: Text(tr('settings.fullyOfflineHint')),
+            value: ref.watch(offlineModeProvider),
+            onChanged: (bool value) =>
+                ref.read(offlineModeProvider.notifier).set(value: value),
           ),
         ],
       ),

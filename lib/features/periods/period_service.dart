@@ -48,14 +48,22 @@ class PeriodRefresh {
 /// - **Received rows are untouchable.** Neither a schedule change nor a
 ///   recompute may move an income already marked received (spec 5.4).
 class PeriodService {
-  PeriodService({required this.repos, required this.calendar});
+  PeriodService({
+    required this.repos,
+    required this.calendar,
+    this.missingHolidayYears = const <int>{},
+  });
 
   final Repositories repos;
 
-  /// Weekends, public holidays and custom non-working days. Holiday loading
-  /// arrives later in M4; until then this is weekends plus whatever the caller
-  /// supplies.
+  /// Weekends, public holidays and custom non-working days, already merged
+  /// (spec 5.1.1). Resolving the three sources is the caller's job.
   final WorkingDayCalendar calendar;
+
+  /// Years the holiday list could not be obtained for. A period anchored in
+  /// one of them is written with `holiday_data_incomplete`, so the window can
+  /// be narrowed later instead of silently standing as final (spec 5.1.1).
+  final Set<int> missingHolidayYears;
 
   /// How many months of future occurrences each rule materialises.
   static const int incomeHorizonMonths = PeriodMaterializer.horizonPeriods;
@@ -147,6 +155,7 @@ class PeriodService {
           anchorDate: period.anchorDate,
           windowStart: period.windowStart,
           windowEnd: period.windowEnd,
+          holidayDataIncomplete: _incomplete(period),
         );
         updated++;
       } else {
@@ -159,6 +168,7 @@ class PeriodService {
           anchorDate: period.anchorDate,
           windowStart: period.windowStart,
           windowEnd: period.windowEnd,
+          holidayDataIncomplete: _incomplete(period),
         );
         created++;
       }
@@ -174,6 +184,15 @@ class PeriodService {
 
     return (created: created, updated: updated, removed: removed);
   }
+
+  /// Whether this period's window was computed without the holidays of the
+  /// year it is anchored in.
+  ///
+  /// The window can only ever narrow when the data arrives — a holiday adds
+  /// non-working days, never removes them — so the flag marks a window that is
+  /// wide rather than one that is wrong (spec 5.1.1).
+  bool _incomplete(MaterializedPeriod period) =>
+      missingHolidayYears.contains(period.anchorDate.year);
 
   /// Fills in the future occurrences each rule is missing.
   ///

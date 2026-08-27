@@ -2,12 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
+import 'package:sielto/core/db/repositories/holiday_repository.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/time/space_clock.dart';
-import 'package:sielto/domain/schedule/working_days.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/periods/period_service.dart';
 
 /// Set once the database is open, by the startup path in main.dart.
@@ -31,7 +33,9 @@ class Repositories {
        payments = PaymentRepository(db: db, clock: clock, userId: userId),
        incomes = IncomeRepository(db: db, clock: clock, userId: userId),
        incomeRules = IncomeRuleRepository(db: db, clock: clock, userId: userId),
-       periods = BudgetPeriodRepository(db: db, clock: clock, userId: userId) {
+       periods = BudgetPeriodRepository(db: db, clock: clock, userId: userId),
+       holidays = HolidayRepository(db: db, clock: clock),
+       customDays = CustomNonWorkingDayRepository(db: db, clock: clock) {
     categories = CategoryRepository(
       db: db,
       clock: clock,
@@ -46,6 +50,12 @@ class Repositories {
   final IncomeRepository incomes;
   final IncomeRuleRepository incomeRules;
   final BudgetPeriodRepository periods;
+
+  /// Reference data about a country rather than a user's records, so neither
+  /// of these carries sync columns (spec 5.1.1, 5.1.2).
+  final HolidayRepository holidays;
+  final CustomNonWorkingDayRepository customDays;
+
   late final CategoryRepository categories;
 }
 
@@ -111,22 +121,55 @@ final Provider<SpaceClock> spaceClockProvider = Provider<SpaceClock>((Ref ref) {
   return SpaceClock(timezone: space?.timezone ?? 'UTC');
 });
 
-/// Which days count as non-working when an income date is resolved.
-///
-/// Weekends only for now; public holidays and the user's own non-working days
-/// join later in M4. Everything downstream already takes them as an input, so
-/// that is a change here rather than in the engine.
-final Provider<WorkingDayCalendar> workingDayCalendarProvider =
-    Provider<WorkingDayCalendar>(
-      (Ref ref) => WorkingDayCalendar.weekendsOnly(),
+final Provider<HolidayService> holidayServiceProvider =
+    Provider<HolidayService>((Ref ref) {
+      final Repositories repos = ref.watch(repositoriesProvider);
+      return HolidayService(
+        holidays: repos.holidays,
+        customDays: repos.customDays,
+      );
+    });
+
+/// The days the user marked by hand, live. App-level, not per Space
+/// (spec 5.1.2).
+final StreamProvider<List<CustomNonWorkingDay>> customNonWorkingDaysProvider =
+    StreamProvider<List<CustomNonWorkingDay>>(
+      (Ref ref) => ref.watch(repositoriesProvider).customDays.watchAll(),
     );
 
-final Provider<PeriodService> periodServiceProvider = Provider<PeriodService>(
-  (Ref ref) => PeriodService(
-    repos: ref.watch(repositoriesProvider),
-    calendar: ref.watch(workingDayCalendarProvider),
-  ),
-);
+/// Which days count as non-working when an income date is resolved
+/// (spec 5.1.1).
+///
+/// The country is the Space's own if it set one, otherwise the global default,
+/// otherwise none — the spec's three priority levels, resolved here so the
+/// engine below never has to know about settings.
+final FutureProvider<ResolvedCalendar> resolvedCalendarProvider =
+    FutureProvider<ResolvedCalendar>((Ref ref) async {
+      final Space? space = ref.watch(currentSpaceProvider);
+      final CalendarDate today = ref.watch(spaceClockProvider).today();
+
+      // Through the controllers, not the store: a store read would not rebuild
+      // this when the setting changes.
+      final String? defaultCountry = ref.watch(defaultCountryProvider);
+      final bool consented = ref.watch(holidayConsentProvider) ?? false;
+      final bool offline = ref.watch(offlineModeProvider);
+
+      // Marking a day non-working has to change the answer immediately.
+      ref.watch(customNonWorkingDaysProvider);
+
+      return ref
+          .watch(holidayServiceProvider)
+          .resolve(
+            countryCode: space?.countryCode ?? defaultCountry,
+            // The horizon, not the calendar year: a monthly cycle materialised
+            // in July already reaches into January (spec 5.1.1).
+            years: <int>{
+              today.year,
+              today.addMonths(PeriodService.incomeHorizonMonths).year,
+            },
+            mayFetch: !offline && consented,
+          );
+    });
 
 /// Brings periods and future occurrences up to date for the open Space.
 ///
@@ -137,9 +180,17 @@ final FutureProvider<PeriodRefresh> periodRefreshProvider =
     FutureProvider<PeriodRefresh>((Ref ref) async {
       final Space? space = ref.watch(currentSpaceProvider);
       if (space == null) return const PeriodRefresh();
-      return ref
-          .watch(periodServiceProvider)
-          .refresh(space, ref.watch(spaceClockProvider).today());
+
+      // The calendar decides where every anchor lands, so it is resolved
+      // before anything is written, not alongside.
+      final ResolvedCalendar resolved = await ref.watch(
+        resolvedCalendarProvider.future,
+      );
+      return PeriodService(
+        repos: ref.watch(repositoriesProvider),
+        calendar: resolved.calendar,
+        missingHolidayYears: resolved.missingYears,
+      ).refresh(space, ref.watch(spaceClockProvider).today());
     });
 
 /// Every period of the open Space, live.

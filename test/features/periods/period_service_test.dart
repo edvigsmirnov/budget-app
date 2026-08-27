@@ -371,6 +371,48 @@ void main() {
     });
   });
 
+  group('incomplete holiday data', () {
+    // The flag is per period, keyed on the year its anchor falls in: the
+    // window can only ever narrow once the data arrives (spec 5.1.1).
+    PeriodService serviceMissing(Set<int> years) => PeriodService(
+      repos: repos,
+      calendar: WorkingDayCalendar.weekendsOnly(),
+      missingHolidayYears: years,
+    );
+
+    test('a period anchored in a missing year is flagged', () async {
+      await anchorOn(5);
+      await serviceMissing(<int>{today.year, today.year + 1})
+          .refresh(space, today);
+      expect(
+        (await periods()).every((BudgetPeriod p) => p.holidayDataIncomplete),
+        isTrue,
+      );
+    });
+
+    test('a period anchored in a known year is not', () async {
+      await anchorOn(5);
+      await service.refresh(space, today);
+      expect(
+        (await periods()).any((BudgetPeriod p) => p.holidayDataIncomplete),
+        isFalse,
+      );
+    });
+
+    test('the flag clears when the data arrives', () async {
+      await anchorOn(5);
+      await serviceMissing(<int>{today.year, today.year + 1})
+          .refresh(space, today);
+      // Open periods move in place, so the same rows lose the flag rather
+      // than being replaced (spec 5.4).
+      await service.refresh(space, today);
+      expect(
+        (await periods()).any((BudgetPeriod p) => p.holidayDataIncomplete),
+        isFalse,
+      );
+    });
+  });
+
   test('Flow spaces are left alone entirely', () async {
     final Space flow = await repos.spaces.create(
       title: 'Freelance',
