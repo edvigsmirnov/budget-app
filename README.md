@@ -16,7 +16,7 @@ friends splitting a trip.
   Cloud sync exists only for Spaces you explicitly opt in to share.
 - **Encrypted at rest**, with a recovery path that survives losing the device.
 
-Open source, distributed outside the app stores, supported by voluntary donations.
+Open source, distributed outside the app stores.
 
 ## Status
 
