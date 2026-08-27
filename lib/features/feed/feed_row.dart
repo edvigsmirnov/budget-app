@@ -7,15 +7,36 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 
-/// Row heights per density (spec 4.5). Compact drops to title and amount on
-/// one line; spacious adds category and status underneath.
+/// What a row shows at each density (spec 4.5).
 ///
-/// Sized against the type ramp, not against the design mock's 300px frames:
-/// at 16px body text the mock's 44/56/72 left every row cramped and the three
-/// steps nearly indistinguishable.
+/// The spec fixes the two ends — compact is the amount and the title on one
+/// line, spacious adds category and status on a second — so standard is the
+/// step between them: the status, without the category. Three heights alone
+/// were not three densities; the detail is what makes them tell apart.
+enum RowDetail {
+  /// Title and amount. Nothing else.
+  titleOnly,
+
+  /// Plus paid or unpaid, expected or received.
+  status,
+
+  /// Plus the category the record belongs to.
+  categoryAndStatus,
+}
+
+RowDetail detailFor(FeedDensity density) => switch (density) {
+  FeedDensity.compact => RowDetail.titleOnly,
+  FeedDensity.standard => RowDetail.status,
+  FeedDensity.spacious => RowDetail.categoryAndStatus,
+};
+
+/// The fixed extent each density gives a row.
+///
+/// Sized against the type ramp rather than the design mock's 300px frames, and
+/// far enough apart that switching is visible on a screen holding two records.
 double rowHeightFor(FeedDensity density) => switch (density) {
-  FeedDensity.compact => 52,
-  FeedDensity.standard => 66,
+  FeedDensity.compact => 48,
+  FeedDensity.standard => 68,
   FeedDensity.spacious => 88,
 };
 
@@ -104,7 +125,10 @@ class FeedRowTile extends StatelessWidget {
         child: SizedBox(
           height: rowHeightFor(density),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
+            padding: EdgeInsets.symmetric(
+              horizontal: SageSpace.gutter,
+              vertical: density == FeedDensity.compact ? 4 : SageSpace.sm,
+            ),
             child: Row(
               children: <Widget>[
                 _PaidCircle(
@@ -130,12 +154,15 @@ class FeedRowTile extends StatelessWidget {
                           color: record.isPaid ? sage.inkSecondary : sage.ink,
                         ),
                       ),
-                      if (density == FeedDensity.spacious)
-                        Text(
-                          _subtitle(record, category),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.bodySmall,
+                      if (_subtitle(record, category) case final String sub)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            sub,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodySmall,
+                          ),
                         ),
                     ],
                   ),
@@ -195,15 +222,17 @@ class FeedRowTile extends StatelessWidget {
     return r.isIncome ? '+${money.format(r.amount!)}' : money.format(r.amount!);
   }
 
-  String _subtitle(FeedRecord r, Category? category) {
-    final List<String> parts = <String>[
-      if (category != null) category.title,
-      if (r.isIncome)
-        r.isPaid ? tr('income.received') : tr('income.expected')
-      else
-        r.isPaid ? tr('payment.paid') : tr('payment.unpaid'),
-    ];
-    return parts.join(' · ');
+  /// Null at the compact end, where the spec asks for one line only.
+  String? _subtitle(FeedRecord r, Category? category) {
+    final RowDetail detail = detailFor(density);
+    if (detail == RowDetail.titleOnly) return null;
+
+    final String status = r.isIncome
+        ? (r.isPaid ? tr('income.received') : tr('income.expected'))
+        : (r.isPaid ? tr('payment.paid') : tr('payment.unpaid'));
+
+    if (detail == RowDetail.status || category == null) return status;
+    return '${category.title} · $status';
   }
 
   void _showNote(BuildContext context, String note) {

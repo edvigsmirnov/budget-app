@@ -153,7 +153,7 @@
     "addAfter": "Add on the day after",
     "duplicateBefore": "Duplicate to the day before",
     "duplicateAfter": "Duplicate to the day after",
-    "periodMoney": "Period money"
+    "income": "Income"
   },
   "payment": {
     "add": "Add expense",
@@ -177,7 +177,12 @@
     "recurringPreview": "Takes {now} now, reserves {total} across {count} payments",
     "dateOutOfRange": "That date is unusually far away. Saving it is allowed.",
     "mandatoryConfirmTitle": "This is a mandatory payment",
-    "mandatoryConfirmBody": "Mandatory payments are real obligations. Continue?"
+    "mandatoryConfirmBody": "Mandatory payments are real obligations. Continue?",
+    "fieldPeriod": "Period",
+    "periodAuto": "By date",
+    "periodCurrent": "Current period",
+    "periodNext": "Next period",
+    "periodHint": "By date follows the due date. A period chosen by hand is kept even when the salary moves."
   },
   "expenseType": {
     "mandatory": "Mandatory",
@@ -369,5 +374,23 @@
     "searchCountry": "Search",
     "source": "From the public API at date.nager.at.",
     "title": "Weekends and holidays"
+  },
+  "freeze": {
+    "addNote": "Add a note",
+    "addNoteHint": "Appended and dated. What is already written stays.",
+    "formNotice": "This period is closed. Amount, date, type and receipt cannot change; a note can still be added.",
+    "frozenBody": "Amounts, dates and receipts are read-only here. Categories and added notes still work.",
+    "frozenTitle": "Period closed",
+    "reasonHint": "Reason",
+    "refused": "This period is closed, so that change is no longer possible.",
+    "soonBody": {
+      "zero": "It freezes today. Check the figures while they can still be corrected.",
+      "one": "It freezes in {} day. Check the figures while they can still be corrected.",
+      "other": "It freezes in {} days. Check the figures while they can still be corrected."
+    },
+    "soonTitle": "This period closes soon",
+    "unfreeze": "Reopen",
+    "unfreezeBody": "It stays editable for 48 hours. Say why — the reason is kept with the period.",
+    "unfreezeTitle": "Reopen this period?"
   }
 }

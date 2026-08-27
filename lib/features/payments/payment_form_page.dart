@@ -318,6 +318,10 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
             return;
         }
       }
+      // A payment's period follows its date, so writing one can move it. The
+      // recompute is what binds it; without this the Feed shows the record and
+      // the figures above it do not count it.
+      ref.invalidate(periodRefreshProvider);
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -384,6 +388,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       return;
     }
     await ref.read(repositoriesProvider).payments.softDelete(existing.id);
+    ref.invalidate(periodRefreshProvider);
     if (mounted) Navigator.of(context).pop();
   }
 

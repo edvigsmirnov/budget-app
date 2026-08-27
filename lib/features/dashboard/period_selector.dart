@@ -15,7 +15,11 @@ import 'package:sielto/features/space/period_ledger.dart';
 /// exactly as far as the schedule is known. There is no arbitrary range — a
 /// period is always one whole cycle between two anchor incomes.
 class PeriodSelector extends ConsumerWidget {
-  const PeriodSelector({super.key});
+  const PeriodSelector({this.onJump, super.key});
+
+  /// Given by the Feed, which scrolls to the period rather than filtering to
+  /// it: the list stays one continuous run of records (spec 4.5).
+  final void Function(BudgetPeriod period)? onJump;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,11 +43,7 @@ class PeriodSelector extends ConsumerWidget {
         IconButton(
           icon: const Icon(Icons.chevron_left),
           tooltip: tr('period.previous'),
-          onPressed: previous == null
-              ? null
-              : () => ref
-                    .read(selectedPeriodIdProvider.notifier)
-                    .select(previous.id),
+          onPressed: previous == null ? null : () => _go(ref, previous),
         ),
         Expanded(
           child: Column(
@@ -86,13 +86,15 @@ class PeriodSelector extends ConsumerWidget {
         IconButton(
           icon: const Icon(Icons.chevron_right),
           tooltip: tr('period.next'),
-          onPressed: next == null
-              ? null
-              : () =>
-                    ref.read(selectedPeriodIdProvider.notifier).select(next.id),
+          onPressed: next == null ? null : () => _go(ref, next),
         ),
       ],
     );
+  }
+
+  void _go(WidgetRef ref, BudgetPeriod period) {
+    ref.read(selectedPeriodIdProvider.notifier).select(period.id);
+    onJump?.call(period);
   }
 
   String _label(BudgetPeriod period, DateLabels dates) {

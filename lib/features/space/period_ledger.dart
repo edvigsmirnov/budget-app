@@ -98,11 +98,21 @@ PeriodLedger buildPeriodLedger({
   required Set<String> anchorRuleIds,
   required CalendarDate today,
 }) {
+  // Bound to this period, or bound nowhere and dated inside it. The second
+  // case is every record between being written and the next recompute placing
+  // it: without it the Feed lists a payment the figures above it ignore.
+  final CalendarDate? end = period.endDate;
+  bool inPeriod(String? boundTo, CalendarDate date) {
+    if (boundTo != null) return boundTo == period.id;
+    return !period.startDate.isAfter(date) &&
+        (end == null || !end.isBefore(date));
+  }
+
   final List<Payment> ofPeriod = payments
-      .where((Payment p) => p.budgetPeriodId == period.id)
+      .where((Payment p) => inPeriod(p.budgetPeriodId, p.dueDate))
       .toList();
   final List<Income> inflows = incomes
-      .where((Income i) => i.budgetPeriodId == period.id)
+      .where((Income i) => inPeriod(i.budgetPeriodId, i.expectedDate))
       .toList();
 
   bool isAnchor(Income i) =>

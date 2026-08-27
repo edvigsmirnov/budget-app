@@ -163,7 +163,8 @@ void main() {
         final List<Income> rows = await repos.incomes.inSpace(space.id);
         final CalendarDate lastBoundary = (await periods()).last.endDate!;
         expect(rows, isNotEmpty);
-        expect(rows.first.expectedDate, d('2026-03-26'));
+        // The first row opens the cycle we are in, which began on 26 February.
+        expect(rows.first.expectedDate, d('2026-02-26'));
         expect(
           rows.every((Income i) => !i.expectedDate.isAfter(lastBoundary)),
           isTrue,
@@ -172,14 +173,45 @@ void main() {
       },
     );
 
-    test('past dates are not invented', () async {
-      // The March occurrence of a 1st-of-month rule is behind us.
+    test('history before the current cycle is not invented', () async {
+      // A 1st-of-month rule: March 1 opened the cycle we are in and is
+      // written; February and everything before it are history and are not.
       await anchorOn(1);
       await service.refresh(space, today);
 
       final List<Income> rows = await repos.incomes.inSpace(space.id);
-      expect(rows.every((Income i) => !i.expectedDate.isBefore(today)), isTrue);
+      expect(
+        rows.every((Income i) => !i.expectedDate.isBefore(d('2026-03-01'))),
+        isTrue,
+      );
     });
+
+    test(
+      "the current cycle's own anchor is written, past date and all",
+      () async {
+        // Without it the period the user is looking at has no amount at all,
+        // and the dashboard reports the cycle as uncomputable (spec 4.7). The
+        // date is wherever the working-day rule landed — 1 March 2026 is a
+        // Sunday — so the assertion is that the cycle has an anchor row, not
+        // that it fell on the 1st.
+        await anchorOn(1);
+        await service.refresh(space, today);
+
+        final BudgetPeriod current = (await periods()).firstWhere(
+          (BudgetPeriod p) =>
+              !p.startDate.isAfter(today) &&
+              (p.endDate == null || !p.endDate!.isBefore(today)),
+        );
+        final List<Income> rows = await repos.incomes.inSpace(space.id);
+        expect(
+          rows.any((Income i) => i.expectedDate == current.anchorDate),
+          isTrue,
+          reason:
+              'the cycle opened on ${current.anchorDate} with no income row '
+              'to say what arrived',
+        );
+      },
+    );
 
     test('a second refresh adds nothing', () async {
       await anchorOn(26);

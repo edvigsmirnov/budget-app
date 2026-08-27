@@ -102,10 +102,23 @@ class PeriodService {
     final List<BudgetPeriod> boundaries = await repos.periods.incomeDrivenIn(
       space.id,
     );
+    // The floor is the start of the cycle the user is in, not today. The
+    // anchor of the current period has usually already arrived — a Space
+    // created mid-month is the ordinary case — and without its row the period
+    // it opens has no amount and reads as uncomputable (spec 4.7).
+    final BudgetPeriod? current = boundaries
+        .where(
+          (BudgetPeriod p) =>
+              !p.startDate.isAfter(today) &&
+              (p.endDate == null || !p.endDate!.isBefore(today)),
+        )
+        .firstOrNull;
+
     final int materialised = await _materialiseIncomes(
       space: space,
       rules: rules,
       today: today,
+      from: current?.startDate ?? today,
       horizonEnd: boundaries.isEmpty ? null : boundaries.last.endDate,
     );
     final int rebound = await _bindRecords(space);
@@ -202,6 +215,7 @@ class PeriodService {
     required Space space,
     required List<IncomeRecurrenceRule> rules,
     required CalendarDate today,
+    required CalendarDate from,
     required CalendarDate? horizonEnd,
   }) async {
     int written = 0;
@@ -214,8 +228,8 @@ class PeriodService {
         rule.id,
       );
 
-      int year = today.year;
-      int month = today.month;
+      int year = from.year;
+      int month = from.month;
       for (int i = 0; i < incomeHorizonMonths; i++) {
         final IncomeWindow window = schedule.resolveFor(
           year,
@@ -224,13 +238,15 @@ class PeriodService {
         );
         final String iso = window.anchorDate.toIso();
 
-        // Past occurrences are not invented retroactively: an income the user
-        // never recorded did not happen as far as the app knows. Nor are ones
-        // past the last boundary, which would have no period to belong to.
+        // History is not invented: an income the user never recorded did not
+        // happen as far as the app knows. The floor is [from] rather than
+        // today, so the current cycle's own anchor is written even though its
+        // date has passed. Nor is anything past the last boundary, which would
+        // have no period to belong to.
         final bool withinHorizon =
             horizonEnd == null || !window.anchorDate.isAfter(horizonEnd);
         if (withinHorizon &&
-            !window.anchorDate.isBefore(today) &&
+            !window.anchorDate.isBefore(from) &&
             !already.contains(iso)) {
           await repos.incomes.create(
             spaceId: space.id,

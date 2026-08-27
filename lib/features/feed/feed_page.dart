@@ -41,8 +41,16 @@ class FeedPage extends ConsumerStatefulWidget {
   ConsumerState<FeedPage> createState() => _FeedPageState();
 }
 
+/// Fixed extents, so the scroll offset can be mapped onto the list without
+/// measuring every child.
+const double _headerExtent = 40;
+const double _cutoffExtent = 34;
+
 class _FeedPageState extends ConsumerState<FeedPage> {
   final ScrollController _scroll = ScrollController();
+
+  /// The flattened list as last built, for the scroll listener and the arrows.
+  List<FeedItem> _items = const <FeedItem>[];
 
   @override
   void initState() {
@@ -58,15 +66,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     super.dispose();
   }
 
-  /// Widens the visible window as the user reaches either end (spec 4.5).
-  ///
-  /// Income-driven mode has no window to widen: the list is one cycle, and the
-  /// arrows above it move between cycles instead.
+  /// Widens the visible window as the user reaches either end (spec 4.5), and
+  /// keeps the period the figures describe in step with where the list is.
   void _extendOnEdge() {
     if (!_scroll.hasClients) return;
-    // Only a cycle view has nothing to widen. Before the first regular income
-    // there is no cycle, and the list is windowed like Flow's.
-    if (ref.read(selectedPeriodProvider) != null) return;
+    _syncPeriodToScroll(_items);
     final ScrollPosition position = _scroll.position;
     const double margin = 400;
     if (position.pixels <= position.minScrollExtent + margin) {
@@ -98,13 +102,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       );
     }
 
-    final List<FeedItem> items = buildFeedItems(
+    _items = buildFeedItems(
       records: source.records,
       today: source.today,
       orderMode: space.feedOrderMode,
       coverage: source.coverage,
       cutoffEntryId: source.cutoffEntryId,
     );
+    final List<FeedItem> items = _items;
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -120,7 +125,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         children: <Widget>[
           // The same selection the Dashboard shows, so paging on one screen
           // moves the other (spec 4.3).
-          if (source.byPeriod) const PeriodSelector(),
+          if (source.byPeriod)
+            PeriodSelector(
+              onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
+            ),
           Expanded(
             child: items.isEmpty
                 ? EmptyState(
@@ -164,51 +172,48 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   /// What the list draws, and the two figures above it.
   ///
-  /// Flow walks the whole forward ledger and the window decides what is drawn;
-  /// income-driven mode draws one cycle, because the cycle is the context its
-  /// figures are computed in (spec 4.3, 4.5). Null while either is loading.
+  /// One continuous list in every mode: the Feed scrolls into the past and the
+  /// future and is deliberately not clipped to a period (spec 4.5). What the
+  /// period decides is the two numbers above it — and which period that is
+  /// comes from where the list is scrolled to, so moving through the records
+  /// moves the figures with them.
   _FeedSource? _source(Space space) {
     final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
     final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
     if (payments == null || incomes == null) return null;
 
+    final FeedWindow window = ref.watch(feedWindowProvider);
+    final List<FeedRecord> records = <FeedRecord>[
+      for (final Payment p in payments)
+        if (window.contains(p.dueDate)) FeedRecord.fromPayment(p),
+      for (final Income i in incomes)
+        if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
+    ];
+
     if (space.budgetMode == BudgetMode.incomeDriven) {
-      // An income-driven Space with no regular income yet has no periods at
-      // all, which is a valid permanent state (spec 4.7). The cycle view has
-      // nothing to show, so the list falls back to plain chronological order
-      // rather than waiting for a period that will never arrive.
-      if (ref.watch(selectedPeriodProvider) == null) {
-        return _unscoped(space, payments, incomes);
-      }
-
+      // Before the first regular income there are no cycles at all, which is a
+      // valid permanent state: the list still shows, with no figures over it
+      // (spec 4.7).
       final PeriodLedger? ledger = ref.watch(periodLedgerProvider).value;
-      if (ledger == null) return null;
-      final BudgetPeriod period = ledger.period;
-      final CalendarDate? end = period.endDate;
-
-      // A record is in the cycle when it is bound to it, or when it is not
-      // bound anywhere and its date falls inside — which is every record
-      // between being written and the next recompute binding it.
-      bool inPeriod(String? boundTo, CalendarDate date) {
-        if (boundTo != null) return boundTo == period.id;
-        return !period.startDate.isAfter(date) &&
-            (end == null || !end.isBefore(date));
+      if (ref.watch(selectedPeriodProvider) == null || ledger == null) {
+        return _FeedSource(
+          records: records,
+          today: ref.watch(spaceClockProvider).today(),
+          coverage: const <String, bool>{},
+          cutoffEntryId: null,
+          available: null,
+          freeCash: null,
+          byPeriod: false,
+        );
       }
 
       return _FeedSource(
-        records: <FeedRecord>[
-          for (final Payment p in payments)
-            if (inPeriod(p.budgetPeriodId, p.dueDate))
-              FeedRecord.fromPayment(p),
-          for (final Income i in incomes)
-            if (inPeriod(i.budgetPeriodId, i.expectedDate))
-              FeedRecord.fromIncome(i),
-        ],
+        records: records,
         today: ledger.today,
+        // The colouring belongs to the cycle the figures describe; records
+        // outside it are drawn plainly rather than in another cycle's colours.
         coverage: ledger.coverageByEntry,
         cutoffEntryId: ledger.cascade?.all.cutoffEntryId,
-        // Null when the anchor income has no amount yet. The figures say so
-        // rather than showing a zero (spec 4.7).
         available: ledger.anchorAmount,
         freeCash: ledger.freeCash,
         byPeriod: true,
@@ -217,14 +222,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     final FlowLedger? flow = ref.watch(flowLedgerProvider).value;
     if (flow == null) return null;
-    final FeedWindow window = ref.watch(feedWindowProvider);
     return _FeedSource(
-      records: <FeedRecord>[
-        for (final Payment p in payments)
-          if (window.contains(p.dueDate)) FeedRecord.fromPayment(p),
-        for (final Income i in incomes)
-          if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
-      ],
+      records: records,
       today: flow.today,
       coverage: flow.coverageByEntry,
       cutoffEntryId: flow.cascade.all.cutoffEntryId,
@@ -234,31 +233,85 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
   }
 
-  /// Every record in the window, with no figures above them.
+  /// Follows the list: the period the top visible day belongs to becomes the
+  /// selected one, so the figures above and the Dashboard both track the
+  /// scroll instead of a separate control.
+  void _syncPeriodToScroll(List<FeedItem> items) {
+    final List<BudgetPeriod> periods = ref.read(incomePeriodsProvider);
+    if (periods.isEmpty || !_scroll.hasClients) return;
+
+    final CalendarDate? top = _topVisibleDate(items);
+    if (top == null) return;
+
+    for (final BudgetPeriod p in periods) {
+      final CalendarDate? end = p.endDate;
+      if (p.startDate.isAfter(top)) continue;
+      if (end != null && end.isBefore(top)) continue;
+      if (ref.read(selectedPeriodIdProvider) != p.id) {
+        ref.read(selectedPeriodIdProvider.notifier).select(p.id);
+      }
+      return;
+    }
+  }
+
+  /// The date of the first row at or below the top of the viewport.
   ///
-  /// The state an income-driven Space is in before its first regular income:
-  /// records exist and must be visible, but there is no anchor to compute a
-  /// free-money figure from, and printing a zero would be a lie (spec 4.7).
-  _FeedSource _unscoped(
-    Space space,
-    List<Payment> payments,
-    List<Income> incomes,
-  ) {
-    final FeedWindow window = ref.watch(feedWindowProvider);
-    return _FeedSource(
-      records: <FeedRecord>[
-        for (final Payment p in payments)
-          if (window.contains(p.dueDate)) FeedRecord.fromPayment(p),
-        for (final Income i in incomes)
-          if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
-      ],
-      today: ref.watch(spaceClockProvider).today(),
-      coverage: const <String, bool>{},
-      cutoffEntryId: null,
-      available: null,
-      freeCash: null,
-      byPeriod: false,
-    );
+  /// Rows are a fixed extent per density and headers a fixed height, so the
+  /// offset maps onto the flattened list arithmetically rather than by asking
+  /// every child where it is.
+  CalendarDate? _topVisibleDate(List<FeedItem> items) {
+    final double offset = _scroll.position.pixels;
+    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
+
+    double y = 0;
+    CalendarDate? lastHeader;
+    for (final FeedItem item in items) {
+      final double h = switch (item) {
+        FeedHeader() => _headerExtent,
+        FeedCutoff() => _cutoffExtent,
+        FeedRow() => rowHeight,
+      };
+      if (item is FeedHeader && item.date != null) lastHeader = item.date;
+      if (y + h > offset) return lastHeader ?? _firstDateOf(items);
+      y += h;
+    }
+    return lastHeader;
+  }
+
+  CalendarDate? _firstDateOf(List<FeedItem> items) {
+    for (final FeedItem item in items) {
+      if (item is FeedHeader && item.date != null) return item.date;
+    }
+    return null;
+  }
+
+  /// Scrolls the list to where a period begins.
+  ///
+  /// The arrows move the list rather than filtering it: the Feed stays one
+  /// continuous run of records, and the buttons are a way to travel it.
+  void _scrollToPeriod(BudgetPeriod period, List<FeedItem> items) {
+    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
+    double y = 0;
+    for (final FeedItem item in items) {
+      if (item is FeedHeader &&
+          item.date != null &&
+          !item.date!.isBefore(period.startDate)) {
+        _scroll.animateTo(
+          y.clamp(
+            _scroll.position.minScrollExtent,
+            _scroll.position.maxScrollExtent,
+          ),
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+        );
+        return;
+      }
+      y += switch (item) {
+        FeedHeader() => _headerExtent,
+        FeedCutoff() => _cutoffExtent,
+        FeedRow() => rowHeight,
+      };
+    }
   }
 
   Widget _buildItem(
@@ -362,6 +415,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           ? repos.incomes.softDelete(record.id)
           : repos.payments.softDelete(record.id),
     );
+    ref.invalidate(periodRefreshProvider);
     if (!deleted || !mounted) return;
     showUndoSnackbar(
       context,
@@ -447,6 +501,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 )
               : repos.payments.update(id, dueDate: Value<CalendarDate>(date)),
         );
+        // The new date may belong to another period.
+        ref.invalidate(periodRefreshProvider);
     }
   }
 }
@@ -513,13 +569,13 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
             child: available == null
                 ? StatColumn(
                     label: source.byPeriod
-                        ? tr('feed.periodMoney')
+                        ? tr('feed.income')
                         : tr('feed.currentMoney'),
                     value: tr('income.amountUnknown'),
                   )
                 : _TotalBlock(
                     label: source.byPeriod
-                        ? tr('feed.periodMoney')
+                        ? tr('feed.income')
                         : tr('feed.currentMoney'),
                     value: available,
                     money: money,
