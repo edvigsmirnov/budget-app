@@ -1,7 +1,9 @@
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/db/synced_repository.dart';
+import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
@@ -18,6 +20,19 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
 
   @override
   TableInfo<$PaymentsTable, Payment> get table => db.payments;
+
+  late final FreezeGuard _freeze = FreezeGuard(db: db, clock: clock);
+
+  /// Which fields a frozen period protects (spec 5.5).
+  ///
+  /// Category and notes are absent on purpose: reclassifying a payment does
+  /// not change the fact of it, and notes may only be appended.
+  static bool _touchesProtected({
+    required bool amount,
+    required bool dueDate,
+    required bool expenseType,
+    required bool isPaid,
+  }) => amount || dueDate || expenseType || isPaid;
 
   /// The Feed's day order: date, then manual position, then id.
   ///
@@ -115,7 +130,19 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     Value<String?> notes = const Value<String?>.absent(),
     Value<bool> isPaid = const Value<bool>.absent(),
     Value<int> sortOrder = const Value<int>.absent(),
-  }) {
+  }) async {
+    // Reordering is not restricted by the freeze: it changes no protected
+    // field and distorts no history (spec 4.5).
+    if (_touchesProtected(
+      amount: amount.present,
+      dueDate: dueDate.present,
+      expenseType: expenseType.present,
+      isPaid: isPaid.present,
+    )) {
+      final Payment? row = await byId(id);
+      await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+    }
+
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.payments,
@@ -140,6 +167,21 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
 
   Future<int> setPaid(String id, {required bool isPaid}) =>
       update(id, isPaid: Value<bool>(isPaid));
+
+  /// Deleting is a protected change too: a frozen period keeps its rows
+  /// (spec 5.5).
+  @override
+  Future<int> softDelete(String id) async {
+    final Payment? row = await byId(id);
+    await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+    return super.softDelete(id);
+  }
+
+  /// The freeze state of one payment, for a screen deciding what to enable.
+  Future<FreezeState> freezeStateOf(String id) async {
+    final Payment? row = await byId(id);
+    return _freeze.stateOf(row?.budgetPeriodId);
+  }
 
   /// Materialises a repeating payment as one row per occurrence, sharing a
   /// `group_recurring_id` (spec 6.3).

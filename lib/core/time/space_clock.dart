@@ -37,6 +37,15 @@ class SpaceClock {
   /// The current instant, untouched by the Space timezone.
   DateTime nowUtc() => _now().toUtc();
 
+  /// The same wall clock read against another Space's zone.
+  ///
+  /// Carrying the injected `now` across is the point: a clock derived with
+  /// `SpaceClock(timezone: ...)` would silently fall back to the system time,
+  /// which is exactly the call this class exists to prevent (plan section 2,
+  /// invariant 7).
+  SpaceClock inZone(String timezone) =>
+      SpaceClock(timezone: timezone, now: _now);
+
   /// The date it is in this Space right now.
   CalendarDate today() => dateOf(_now());
 

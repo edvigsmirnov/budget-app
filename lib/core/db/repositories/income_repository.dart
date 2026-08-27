@@ -1,7 +1,9 @@
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/db/synced_repository.dart';
+import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
@@ -200,6 +202,25 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
   @override
   TableInfo<$IncomesTable, Income> get table => db.incomes;
 
+  late final FreezeGuard _freeze = FreezeGuard(db: db, clock: clock);
+
+  Future<Income?> byId(String id) =>
+      (selectAlive()..where(($IncomesTable t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  /// The freeze state of one occurrence, for a screen deciding what to enable.
+  Future<FreezeState> freezeStateOf(String id) async {
+    final Income? row = await byId(id);
+    return _freeze.stateOf(row?.budgetPeriodId);
+  }
+
+  @override
+  Future<int> softDelete(String id) async {
+    final Income? row = await byId(id);
+    await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+    return super.softDelete(id);
+  }
+
   Future<List<Income>> inSpace(String spaceId) => _selectInSpace(spaceId).get();
 
   Stream<List<Income>> watchInSpace(String spaceId) =>
@@ -258,7 +279,16 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     Value<CalendarDate?> actualDate = const Value<CalendarDate?>.absent(),
     Value<String?> notes = const Value<String?>.absent(),
     Value<bool> isPaid = const Value<bool>.absent(),
-  }) {
+  }) async {
+    // Amount, dates and the receipt flag are what a frozen period protects;
+    // the note is appended rather than replaced and stays open (spec 5.5).
+    if (amount.present ||
+        expectedDate.present ||
+        actualDate.present ||
+        isPaid.present) {
+      await _freeze.refuseIfFrozen((await byId(id))?.budgetPeriodId);
+    }
+
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.incomes,
