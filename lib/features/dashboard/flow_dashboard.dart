@@ -123,17 +123,12 @@ class _Body extends ConsumerWidget {
                     openIncomeForm(context, incomeId: ledger.nearestIncome!.id),
         ),
         const SizedBox(height: SageSpace.md),
-        // Below what the design draws, because the spec asks for both here and
-        // the design's Flow frame shows neither: the cascade answers "does it
-        // cover the obligations" (spec 4.6) and the totals what is still owed
-        // (spec 4.4). Neither is the first question Flow is opened for.
-        CascadeCard(
-          available: ledger.available,
-          baseRemainder: ledger.baseRemainder,
-          baseCoverage: ledger.cascade.mandatory.coverage,
-          money: money,
-        ),
-        const SizedBox(height: SageSpace.md),
+        // No cascade here. Spec 4.6 mentions one, but Flow's question is how
+        // far the money reaches and the answer is already the date above and
+        // the Feed's cutoff line; splitting the same walk into mandatory and
+        // everything adds a second reading of it and no new fact. It stays in
+        // income-driven mode, where the cycle's base remainder is a figure of
+        // its own.
         TotalsCard(
           planned: ledger.totalPlanned,
           paid: ledger.totalPaid,
