@@ -361,12 +361,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           isOverdue: record.isOverdue(today),
           onLongPress: () =>
               showRecordMenu(context, ref, record: record, today: today),
-          dragHandle: ReorderableDragStartListener(
-            index: index,
-            child: Icon(
-              Icons.drag_indicator,
-              size: 20,
-              color: context.sage.inkLabel,
+          // The grip swallows tap and long-press, so holding it starts a drag
+          // and nothing else. Without that, gripping without moving falls
+          // through to the row and opens the add menu — the one gesture a
+          // person is most likely to make while lining up a drag.
+          dragHandle: GestureDetector(
+            onTap: () {},
+            onLongPress: () {},
+            child: ReorderableDragStartListener(
+              index: index,
+              child: Padding(
+                // A finger-sized target around a small glyph.
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SageSpace.sm,
+                  vertical: SageSpace.md,
+                ),
+                child: Icon(
+                  Icons.drag_indicator,
+                  size: 20,
+                  color: context.sage.inkLabel,
+                ),
+              ),
             ),
           ),
         );
@@ -484,20 +499,26 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           for (final FeedItem item in items)
             if (item is FeedRow) item.record.id: item.record,
         };
-        for (int i = 0; i < ids.length; i++) {
-          final FeedRecord? record = byId[ids[i]];
-          if (record == null) continue;
-          final int order = i * PaymentRepository.sortOrderGap;
-          if (record.sortOrder == order) continue;
-          if (record.isIncome) {
-            await repos.incomes.setSortOrder(record.id, order);
-          } else {
-            await repos.payments.update(
-              record.id,
-              sortOrder: Value<int>(order),
-            );
+        // One transaction for the whole day. Written row by row, the query
+        // behind the list re-emits after each one and the Feed draws every
+        // half-finished order on the way — which reads as the rows flicking
+        // back to where they were before settling.
+        await repos.db.transaction(() async {
+          for (int i = 0; i < ids.length; i++) {
+            final FeedRecord? record = byId[ids[i]];
+            if (record == null) continue;
+            final int order = i * PaymentRepository.sortOrderGap;
+            if (record.sortOrder == order) continue;
+            if (record.isIncome) {
+              await repos.incomes.setSortOrder(record.id, order);
+            } else {
+              await repos.payments.update(
+                record.id,
+                sortOrder: Value<int>(order),
+              );
+            }
           }
-        }
+        });
 
       case ReorderToOtherDay(
         recordId: final String id,

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -75,13 +76,26 @@ void main() {
     );
   }
 
-  Future<void> addSalary() async {
-    await repos.incomeRules.create(
+  /// A salary already on file before the cycle under test opened.
+  ///
+  /// Written through a repository on an earlier clock on purpose: a rule
+  /// created today materialises nothing behind it, so a rule stamped today
+  /// would leave the current cycle without the salary that opened it — true
+  /// to the rules, but not the case these tests are about.
+  Future<void> addSalary({String? amount = '3224'}) async {
+    await IncomeRuleRepository(
+      db: db,
+      clock: SpaceClock(
+        timezone: 'UTC',
+        now: () => DateTime.utc(2026, 1, 4, 12),
+      ),
+      userId: 'tester',
+    ).create(
       spaceId: space.id,
       title: 'Salary',
       scheduleType: ScheduleType.fixedDate,
       fixedDay: 5,
-      amount: m('3224'),
+      amount: amount == null ? null : m(amount),
       isAnchor: true,
     );
     await service.refresh(space, today);
@@ -138,14 +152,7 @@ void main() {
     test('an anchor with no amount stays uncomputable', () async {
       // A floating salary: money is coming and its size is not known, so any
       // figure would be invented (spec 4.7).
-      await repos.incomeRules.create(
-        spaceId: space.id,
-        title: 'Salary',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 5,
-        isAnchor: true,
-      );
-      await service.refresh(space, today);
+      await addSalary(amount: null);
 
       final PeriodLedger ledger = await ledgerOf(await currentPeriod());
       expect(ledger.anchorAmount, isNull);

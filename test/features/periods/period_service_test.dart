@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -163,8 +164,8 @@ void main() {
         final List<Income> rows = await repos.incomes.inSpace(space.id);
         final CalendarDate lastBoundary = (await periods()).last.endDate!;
         expect(rows, isNotEmpty);
-        // The first row opens the cycle we are in, which began on 26 February.
-        expect(rows.first.expectedDate, d('2026-02-26'));
+        // Nothing before the rule existed: it was written today.
+        expect(rows.first.expectedDate, d('2026-03-26'));
         expect(
           rows.every((Income i) => !i.expectedDate.isAfter(lastBoundary)),
           isTrue,
@@ -186,32 +187,57 @@ void main() {
       );
     });
 
-    test(
-      "the current cycle's own anchor is written, past date and all",
-      () async {
-        // Without it the period the user is looking at has no amount at all,
-        // and the dashboard reports the cycle as uncomputable (spec 4.7). The
-        // date is wherever the working-day rule landed — 1 March 2026 is a
-        // Sunday — so the assertion is that the cycle has an anchor row, not
-        // that it fell on the 1st.
-        await anchorOn(1);
-        await service.refresh(space, today);
+    test('a rule written today invents nothing behind it', () async {
+      // A 1st-of-month rule entered on the 10th. The cycle it lands in opened
+      // on the 2nd, but that salary arrived before this schedule existed and
+      // is not the app's to record.
+      await anchorOn(1);
+      await service.refresh(space, today);
 
-        final BudgetPeriod current = (await periods()).firstWhere(
-          (BudgetPeriod p) =>
-              !p.startDate.isAfter(today) &&
-              (p.endDate == null || !p.endDate!.isBefore(today)),
-        );
-        final List<Income> rows = await repos.incomes.inSpace(space.id);
-        expect(
-          rows.any((Income i) => i.expectedDate == current.anchorDate),
-          isTrue,
-          reason:
-              'the cycle opened on ${current.anchorDate} with no income row '
-              'to say what arrived',
-        );
-      },
-    );
+      final List<Income> rows = await repos.incomes.inSpace(space.id);
+      expect(
+        rows.every((Income i) => !i.expectedDate.isBefore(today)),
+        isTrue,
+        reason: 'materialised ${rows.map((Income i) => i.expectedDate)}',
+      );
+    });
+
+    test('a rule that predates its cycle fills that cycle', () async {
+      // The other half of the same rule: a schedule already on file when the
+      // cycle opened does get the salary that opened it, or the period the
+      // user is looking at has no amount at all (spec 4.7).
+      final IncomeRuleRepository older = IncomeRuleRepository(
+        db: db,
+        clock: SpaceClock(
+          timezone: 'UTC',
+          now: () => DateTime.utc(2026, 1, 5, 12),
+        ),
+        userId: 'tester',
+      );
+      await older.create(
+        spaceId: space.id,
+        title: 'Salary',
+        scheduleType: ScheduleType.fixedDate,
+        fixedDay: 1,
+        amount: m('3000'),
+        isAnchor: true,
+      );
+      await service.refresh(space, today);
+
+      final BudgetPeriod current = (await periods()).firstWhere(
+        (BudgetPeriod p) =>
+            !p.startDate.isAfter(today) &&
+            (p.endDate == null || !p.endDate!.isBefore(today)),
+      );
+      final List<Income> rows = await repos.incomes.inSpace(space.id);
+      expect(
+        rows.any((Income i) => i.expectedDate == current.anchorDate),
+        isTrue,
+        reason:
+            'the cycle opened on ${current.anchorDate} with no income row '
+            'to say what arrived',
+      );
+    });
 
     test('a second refresh adds nothing', () async {
       await anchorOn(26);

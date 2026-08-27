@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/period/period_materializer.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/schedule/income_window.dart';
@@ -301,6 +302,8 @@ class PeriodService {
   }) async {
     int written = 0;
 
+    final SpaceClock clock = repos.spaces.clockFor(space);
+
     for (final IncomeRecurrenceRule rule in rules) {
       final IncomeSchedule? schedule = scheduleOf(rule);
       if (schedule == null) continue;
@@ -309,8 +312,15 @@ class PeriodService {
         rule.id,
       );
 
-      int year = from.year;
-      int month = from.month;
+      // A schedule starts when it is written down. The floor is the cycle's
+      // start so a Space opened mid-month still gets the salary that opened
+      // the cycle it is in — but never earlier than the rule itself, or
+      // entering a salary today would invent last month's as well.
+      final CalendarDate ruleStart = clock.dateOf(rule.createdAt);
+      final CalendarDate floor = ruleStart.isAfter(from) ? ruleStart : from;
+
+      int year = floor.year;
+      int month = floor.month;
       for (int i = 0; i < incomeHorizonMonths; i++) {
         final IncomeWindow window = schedule.resolveFor(
           year,
@@ -320,14 +330,12 @@ class PeriodService {
         final String iso = window.anchorDate.toIso();
 
         // History is not invented: an income the user never recorded did not
-        // happen as far as the app knows. The floor is [from] rather than
-        // today, so the current cycle's own anchor is written even though its
-        // date has passed. Nor is anything past the last boundary, which would
-        // have no period to belong to.
+        // happen as far as the app knows. Nor is anything past the last
+        // boundary, which would have no period to belong to.
         final bool withinHorizon =
             horizonEnd == null || !window.anchorDate.isAfter(horizonEnd);
         if (withinHorizon &&
-            !window.anchorDate.isBefore(from) &&
+            !window.anchorDate.isBefore(floor) &&
             !already.contains(iso)) {
           await repos.incomes.create(
             spaceId: space.id,
