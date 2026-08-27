@@ -223,6 +223,26 @@ void main() {
       expect(await repos.incomes.inSpace(space.id), hasLength(first));
     });
 
+    test('a deleted occurrence stays deleted', () async {
+      // The gap-filling read counts deleted rows, or the next recompute would
+      // read the date as missing and put the occurrence straight back — which
+      // looks exactly like the delete button doing nothing.
+      await anchorOn(26);
+      await service.refresh(space, today);
+      final List<Income> rows = await repos.incomes.inSpace(space.id);
+      final Income dropped = rows.last;
+
+      await repos.incomes.softDelete(dropped.id);
+      await service.refresh(space, today);
+
+      final List<Income> after = await repos.incomes.inSpace(space.id);
+      expect(
+        after.any((Income i) => i.expectedDate == dropped.expectedDate),
+        isFalse,
+      );
+      expect(after, hasLength(rows.length - 1));
+    });
+
     test('an occurrence edited by hand survives a refresh', () async {
       await anchorOn(26);
       await service.refresh(space, today);

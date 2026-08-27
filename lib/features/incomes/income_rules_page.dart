@@ -9,6 +9,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/periods/schedule_mapping.dart';
 
 /// The regular incomes of a Space and their schedules (spec 5.1, 5.2).
@@ -147,6 +148,9 @@ class _RuleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     return ListTile(
+      // The rule is what a regular income really is, so tapping it edits the
+      // whole series rather than one month of it (spec 5.4).
+      onTap: () => openIncomeRuleForm(context, rule: rule),
       title: Row(
         children: <Widget>[
           Flexible(child: Text(rule.title, overflow: TextOverflow.ellipsis)),

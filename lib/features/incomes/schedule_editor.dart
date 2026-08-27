@@ -55,6 +55,41 @@ class ScheduleDraft {
   /// A range must not end before it starts; everything else is constrained by
   /// its control.
   bool get isValid => type != ScheduleType.dateRange || rangeEnd >= rangeStart;
+
+  /// Compared by value, because the answer decides whether a rule edit re-dates
+  /// the occurrences already on the calendar. By identity every save would look
+  /// like a schedule change and drop rows that had per-month corrections on
+  /// them (spec 5.4).
+  ///
+  /// Only the fields the chosen [type] actually uses count: the editor keeps
+  /// the others at whatever they were last set to, and a stale `fixedDay`
+  /// behind a weekday rule is not a difference.
+  @override
+  bool operator ==(Object other) {
+    if (other is! ScheduleDraft || other.type != type) return false;
+    return switch (type) {
+      ScheduleType.fixedDate => other.fixedDay == fixedDay,
+      ScheduleType.weekdayRule =>
+        other.ordinal == ordinal && other.weekday == weekday,
+      ScheduleType.dateRange =>
+        other.rangeStart == rangeStart && other.rangeEnd == rangeEnd,
+      ScheduleType.boundaryDays =>
+        other.boundaryAnchor == boundaryAnchor &&
+            other.boundaryCount == boundaryCount,
+    };
+  }
+
+  @override
+  int get hashCode => switch (type) {
+    ScheduleType.fixedDate => Object.hash(type, fixedDay),
+    ScheduleType.weekdayRule => Object.hash(type, ordinal, weekday),
+    ScheduleType.dateRange => Object.hash(type, rangeStart, rangeEnd),
+    ScheduleType.boundaryDays => Object.hash(
+      type,
+      boundaryAnchor,
+      boundaryCount,
+    ),
+  };
 }
 
 /// Picks one of the four schedule shapes and its fields (spec 5.1).

@@ -67,6 +67,10 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   bool _isAnchor = true;
   bool _anchorChoiceApplies = false;
 
+  /// This row is one materialised salary of an anchor rule, so the cycle it
+  /// sits in was built around it.
+  bool _isAnchorOccurrence = false;
+
   Income? _existing;
   bool _loaded = false;
   bool _saving = false;
@@ -115,6 +119,15 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         _isReceived = row.isPaid;
         _actualDate = row.actualDate ?? row.expectedDate;
         _freeze = ref.read(freezeLookupProvider).of(row.budgetPeriodId);
+
+        final String? ruleId = row.recurrenceRuleId;
+        if (ruleId != null) {
+          final List<IncomeRecurrenceRule> anchors = await repos.incomeRules
+              .anchorsInSpace(space.id);
+          _isAnchorOccurrence = anchors.any(
+            (IncomeRecurrenceRule r) => r.id == ruleId,
+          );
+        }
       }
     } else if (space.budgetMode == BudgetMode.incomeDriven) {
       // The first regular income of the Space becomes the anchor with no
@@ -341,8 +354,11 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         title: Text(isOccurrence ? tr('income.edit') : tr('income.add')),
         actions: <Widget>[
           // Deleting is protected, so a closed period offers no delete rather
-          // than one that refuses (spec 5.5).
-          if (isOccurrence && !_isFrozen)
+          // than one that refuses (spec 5.5). An anchor occurrence has none
+          // either: the cycle is built around it, and removing it would leave
+          // a period with no income to define it. The rule is what goes, from
+          // the regular income list (spec 5.2).
+          if (isOccurrence && !_isFrozen && !_isAnchorOccurrence)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: tr('common.delete'),

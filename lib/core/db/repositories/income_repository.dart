@@ -92,6 +92,50 @@ class IncomeRuleRepository
         );
   }
 
+  /// Rewrites a rule's name, amount and schedule (spec 5.4).
+  ///
+  /// The schedule fields are written wholesale rather than patched: a rule
+  /// that changes from "the 5th" to "the last Friday" must not keep the 5 in
+  /// `fixed_day`, where a later read would find two answers.
+  ///
+  /// The occurrences already on the calendar are not touched here. Which of
+  /// them follow the change is the caller's decision, and a different one for
+  /// an amount than for a date (spec 5.4).
+  Future<int> updateRule(
+    String ruleId, {
+    required String title,
+    required ScheduleType scheduleType,
+    Decimal? amount,
+    int? fixedDay,
+    WeekdayOrdinal? weekdayOrdinal,
+    Weekday? weekdayDay,
+    int? dateRangeStart,
+    int? dateRangeEnd,
+    BoundaryAnchor? boundaryAnchor,
+    int? boundaryCount,
+  }) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(
+      db.incomeRecurrenceRules,
+    )..where(($IncomeRecurrenceRulesTable t) => t.id.equals(ruleId))).write(
+      IncomeRecurrenceRulesCompanion(
+        title: Value<String>(title.trim()),
+        scheduleType: Value<ScheduleType>(scheduleType),
+        amount: Value<Decimal?>(amount),
+        fixedDay: Value<int?>(fixedDay),
+        weekdayOrdinal: Value<WeekdayOrdinal?>(weekdayOrdinal),
+        weekdayDay: Value<Weekday?>(weekdayDay),
+        dateRangeStart: Value<int?>(dateRangeStart),
+        dateRangeEnd: Value<int?>(dateRangeEnd),
+        boundaryAnchor: Value<BoundaryAnchor?>(boundaryAnchor),
+        boundaryCount: Value<int?>(boundaryCount),
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
+  }
+
   /// The first regular income of an income_driven Space becomes the anchor
   /// automatically (spec 5.2).
   Future<IncomeRecurrenceRule> createFirstAsAnchor({
@@ -311,8 +355,15 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
 
   /// The occurrences already materialised for a rule, by expected date. Used
   /// to fill only the gaps rather than re-inserting the horizon each time.
+  ///
+  /// Deleted rows count. A soft delete is a decision — "not this month" — and
+  /// leaving it out would have the next recompute read the date as a gap and
+  /// put the occurrence straight back, which is indistinguishable from the
+  /// delete having done nothing.
   Future<Set<String>> materialisedDatesFor(String ruleId) async {
-    final List<Income> rows = await forRule(ruleId);
+    final List<Income> rows = await (db.select(
+      db.incomes,
+    )..where(($IncomesTable t) => t.recurrenceRuleId.equals(ruleId))).get();
     return <String>{for (final Income i in rows) i.expectedDate.toIso()};
   }
 

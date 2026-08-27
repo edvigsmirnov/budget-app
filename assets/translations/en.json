@@ -236,7 +236,10 @@
     "makeAdditional": "Make it additional",
     "lastAnchorRequired": "Make another income the anchor first.",
     "deleteRuleTitle": "Delete this regular income?",
-    "deleteRuleBody": "Future occurrences of \"{title}\" are removed. Ones already received stay."
+    "deleteRuleBody": "Future occurrences of \"{title}\" are removed. Ones already received stay.",
+    "editRule": "Edit regular income",
+    "ruleAmountHint": "Applies to every occurrence that has not arrived yet. Months already marked received keep their own figure.",
+    "ruleScheduleHint": "Changing the schedule re-dates the occurrences that have not arrived yet."
   },
   "category": {
     "title": "Categories",
