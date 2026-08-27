@@ -17,6 +17,7 @@ import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 import 'package:sielto/features/payments/recurrence.dart';
 import 'package:sielto/features/payments/series_scope_dialog.dart';
@@ -433,6 +434,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                 occurrences: _occurrences,
                 interval: _interval,
                 money: money,
+                periodChoice: _periodChoice,
               ),
             Expanded(
               child: ListView(
@@ -585,6 +587,11 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
 /// It recomputes on every keystroke and stays in memory: nothing is written
 /// until Save. A preview that would go negative turns red immediately, which
 /// is the whole point of showing it before the record exists.
+///
+/// It walks whatever context the Space computes in — the open ledger in Flow,
+/// the selected cycle in income-driven mode. Reading Flow's walk everywhere
+/// would show a figure containing every future salary at once, which is not a
+/// number the user has to spend (spec 4.7).
 class _LivePreview extends ConsumerWidget {
   const _LivePreview({
     required this.amount,
@@ -594,6 +601,7 @@ class _LivePreview extends ConsumerWidget {
     required this.occurrences,
     required this.interval,
     required this.money,
+    required this.periodChoice,
   });
 
   final Decimal? amount;
@@ -604,12 +612,67 @@ class _LivePreview extends ConsumerWidget {
   final RecurrenceInterval interval;
   final MoneyFormat money;
 
+  /// Where the record is filed, which decides which salary it comes out of.
+  final PeriodChoice periodChoice;
+
+  /// The cycle the draft belongs to, walked from its own anchor.
+  ///
+  /// Null before there is a cycle to walk — an income-driven Space with no
+  /// regular income yet, or a date beyond the materialised horizon.
+  PeriodLedger? _ledgerForDraft(WidgetRef ref) {
+    final CalendarDate? draftDate = date;
+    if (draftDate == null) return null;
+
+    final List<BudgetPeriod> periods = ref.watch(incomePeriodsProvider);
+    final BudgetPeriod? target = periodsAround(
+      periods,
+      draftDate,
+    ).forChoice(periodChoice);
+    if (target == null) return null;
+
+    final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
+    final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
+    final List<IncomeRecurrenceRule>? rules = ref
+        .watch(incomeRulesProvider)
+        .value;
+    if (payments == null || incomes == null || rules == null) return null;
+
+    return buildPeriodLedger(
+      period: target,
+      payments: payments,
+      incomes: incomes,
+      anchorRuleIds: <String>{
+        for (final IncomeRecurrenceRule r in rules)
+          if (r.isAnchor) r.id,
+      },
+      today: ref.watch(spaceClockProvider).today(),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final FlowLedger? base = ref.watch(flowLedgerProvider).value;
-    if (base == null) return const SizedBox.shrink();
+
+    final Decimal? available;
+    final List<LedgerEntry> existing;
+    if (ref.watch(currentSpaceProvider)?.budgetMode ==
+        BudgetMode.incomeDriven) {
+      // The cycle the record is dated into, not the one on screen: money for a
+      // payment due next month comes out of next month's salary, and previewing
+      // it against this month's would answer a question nobody asked.
+      final PeriodLedger? period = _ledgerForDraft(ref);
+      if (period == null) return const SizedBox.shrink();
+      available = period.anchorAmount;
+      existing = period.entries;
+    } else {
+      final FlowLedger? flow = ref.watch(flowLedgerProvider).value;
+      if (flow == null) return const SizedBox.shrink();
+      available = flow.available;
+      existing = flow.entries;
+    }
+    // A cycle whose salary has no amount yet has nothing to preview against.
+    if (available == null) return const SizedBox.shrink();
 
     final Decimal? draftAmount = amount;
     final CalendarDate? draftDate = date;
@@ -635,17 +698,17 @@ class _LivePreview extends ConsumerWidget {
           ),
     ];
 
+    final List<LedgerEntry> without = <LedgerEntry>[
+      for (final LedgerEntry e in existing)
+        if (e.id != replacingId) e,
+    ];
     final LedgerRun before = LedgerWalker.walk(
-      available: base.available,
-      entries: <LedgerEntry>[
-        for (final LedgerEntry e in base.entries)
-          if (e.id != replacingId) e,
-      ],
+      available: available,
+      entries: without,
     );
-    final LedgerRun after = previewRun(
-      base: base,
-      draft: draft,
-      replacingId: replacingId,
+    final LedgerRun after = LedgerWalker.walk(
+      available: available,
+      entries: <LedgerEntry>[...without, ...draft],
     );
 
     final Decimal? beforeFree = before.freeCash;

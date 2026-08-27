@@ -218,18 +218,23 @@ FlowLedger buildFlowLedger({
 /// the database is not touched until Save. [replacingId] takes the record
 /// being edited out first, so the preview measures the change rather than a
 /// duplicate.
+///
+/// [available] and [entries] come from whichever context the Space computes
+/// in — Flow's open walk or one income cycle — rather than from `FlowLedger`,
+/// which would put every future salary into an income-driven preview.
 LedgerRun previewRun({
-  required FlowLedger base,
+  required Decimal available,
+  required List<LedgerEntry> entries,
   required List<LedgerEntry> draft,
   String? replacingId,
-}) {
-  final List<LedgerEntry> entries = <LedgerEntry>[
-    for (final LedgerEntry e in base.entries)
+}) => LedgerWalker.walk(
+  available: available,
+  entries: <LedgerEntry>[
+    for (final LedgerEntry e in entries)
       if (e.id != replacingId) e,
     ...draft,
-  ];
-  return LedgerWalker.walk(available: base.available, entries: entries);
-}
+  ],
+);
 
 /// The live figures for the current Space. Recomputed whenever a record, the
 /// balance or the Space itself changes (spec 4.9).

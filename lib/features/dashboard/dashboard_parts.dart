@@ -146,9 +146,9 @@ class CascadeCard extends StatefulWidget {
 }
 
 class _CascadeCardState extends State<CascadeCard> {
-  /// Open on first sight: the cascade is the one figure on this screen whose
-  /// name does not explain itself.
-  bool _explained = true;
+  /// Closed until asked. The explanation is three lines that stop being news
+  /// after the first read, and the figure below is the point of the card.
+  bool _explained = false;
 
   @override
   Widget build(BuildContext context) {

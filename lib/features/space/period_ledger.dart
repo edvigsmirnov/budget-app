@@ -98,6 +98,9 @@ PeriodLedger buildPeriodLedger({
   required Set<String> anchorRuleIds,
   required CalendarDate today,
 }) {
+  bool isAnchor(Income i) =>
+      i.recurrenceRuleId != null && anchorRuleIds.contains(i.recurrenceRuleId);
+
   // Bound to this period, or bound nowhere and dated inside it. The second
   // case is every record between being written and the next recompute placing
   // it: without it the Feed lists a payment the figures above it ignore.
@@ -111,12 +114,19 @@ PeriodLedger buildPeriodLedger({
   final List<Payment> ofPeriod = payments
       .where((Payment p) => inPeriod(p.budgetPeriodId, p.dueDate))
       .toList();
-  final List<Income> inflows = incomes
-      .where((Income i) => inPeriod(i.budgetPeriodId, i.expectedDate))
-      .toList();
 
-  bool isAnchor(Income i) =>
-      i.recurrenceRuleId != null && anchorRuleIds.contains(i.recurrenceRuleId);
+  // The anchor is the exception, and deliberately strict: it is not a record
+  // inside the period, it is the record the period was built around. Counting
+  // an unbound one by date lets a materialisation still in flight — or a
+  // schedule that puts two occurrences near one boundary — add a second and
+  // third salary to the base the whole cycle is measured from.
+  final List<Income> inflows = incomes
+      .where(
+        (Income i) => isAnchor(i)
+            ? i.budgetPeriodId == period.id
+            : inPeriod(i.budgetPeriodId, i.expectedDate),
+      )
+      .toList();
 
   // Anchors that resolved to the same date merged into this one period, so
   // their amounts add (spec 4.7).
