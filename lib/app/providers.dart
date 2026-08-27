@@ -7,6 +7,8 @@ import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/working_days.dart';
+import 'package:sielto/features/periods/period_service.dart';
 
 /// Set once the database is open, by the startup path in main.dart.
 final Provider<AppDatabase> databaseProvider = Provider<AppDatabase>(
@@ -108,6 +110,45 @@ final Provider<SpaceClock> spaceClockProvider = Provider<SpaceClock>((Ref ref) {
   final Space? space = ref.watch(currentSpaceProvider);
   return SpaceClock(timezone: space?.timezone ?? 'UTC');
 });
+
+/// Which days count as non-working when an income date is resolved.
+///
+/// Weekends only for now; public holidays and the user's own non-working days
+/// join later in M4. Everything downstream already takes them as an input, so
+/// that is a change here rather than in the engine.
+final Provider<WorkingDayCalendar> workingDayCalendarProvider =
+    Provider<WorkingDayCalendar>(
+      (Ref ref) => WorkingDayCalendar.weekendsOnly(),
+    );
+
+final Provider<PeriodService> periodServiceProvider = Provider<PeriodService>(
+  (Ref ref) => PeriodService(
+    repos: ref.watch(repositoriesProvider),
+    calendar: ref.watch(workingDayCalendarProvider),
+  ),
+);
+
+/// Brings periods and future occurrences up to date for the open Space.
+///
+/// Watched by the screens that need periods, so opening a Space is what
+/// triggers the recompute. It reads the Space row and the clock, and neither
+/// changes when it writes — so this cannot feed itself.
+final FutureProvider<PeriodRefresh> periodRefreshProvider =
+    FutureProvider<PeriodRefresh>((Ref ref) async {
+      final Space? space = ref.watch(currentSpaceProvider);
+      if (space == null) return const PeriodRefresh();
+      return ref
+          .watch(periodServiceProvider)
+          .refresh(space, ref.watch(spaceClockProvider).today());
+    });
+
+/// Every period of the open Space, live.
+final StreamProvider<List<BudgetPeriod>> spacePeriodsProvider =
+    StreamProvider<List<BudgetPeriod>>((Ref ref) {
+      final Space? space = ref.watch(currentSpaceProvider);
+      if (space == null) return const Stream<List<BudgetPeriod>>.empty();
+      return ref.watch(repositoriesProvider).periods.watchInSpace(space.id);
+    });
 
 /// The open Space. Throws where there is none, which is a routing mistake
 /// rather than a state a screen has to handle.

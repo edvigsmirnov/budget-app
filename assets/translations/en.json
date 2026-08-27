@@ -196,7 +196,25 @@
     "amountRequired": "An amount is needed to mark this received.",
     "markReceived": "Already received",
     "received": "Received",
-    "expected": "Expected"
+    "expected": "Expected",
+    "makeRegular": "Make it regular",
+    "makeRegularHint": "Repeats on a schedule instead of happening once.",
+    "partOfSeries": "One occurrence of a regular income.",
+    "fieldActualDate": "Actually received on",
+    "actualDateNote": "Kept for the record. It changes no calculation.",
+    "role": "Role",
+    "roleAnchor": "Also an anchor",
+    "roleAdditional": "Additional",
+    "roleAnchorHint": "Periods run from one anchor income to the next.",
+    "roleAdditionalHint": "Adds to the money available without moving period boundaries.",
+    "regularTitle": "Regular incomes",
+    "noRegular": "No regular incomes yet.",
+    "anchorBadge": "Anchor",
+    "makeAnchor": "Make it an anchor",
+    "makeAdditional": "Make it additional",
+    "lastAnchorRequired": "Make another income the anchor first.",
+    "deleteRuleTitle": "Delete this regular income?",
+    "deleteRuleBody": "Future occurrences of \"{title}\" are removed. Ones already received stay."
   },
   "category": {
     "title": "Categories",
@@ -237,5 +255,65 @@
     "confirmTitle": "Delete the unreadable data?",
     "confirmBody": "The database stays unreadable without the key. Starting over deletes it and opens onboarding. This cannot be undone.",
     "confirmAction": "Delete and start over"
+  },
+  "schedule": {
+    "type": "Schedule",
+    "dayOfMonth": "Day of the month",
+    "ordinal": "Which one",
+    "weekday": "Weekday",
+    "rangeStart": "From day",
+    "rangeEnd": "To day",
+    "boundaryEnd": "Counting from",
+    "boundaryCount": "Number of days",
+    "shortMonthHint": "In short months, the last day of the month.",
+    "latestDayRule": "The latest day of the window is used, so nothing is planned on money that has not arrived.",
+    "rangeInverted": "The last day cannot come before the first.",
+    "incomplete": "Schedule incomplete",
+    "fixedDate": {
+      "name": "A fixed date",
+      "hint": "The same day every month.",
+      "summary": "Day {day} of each month"
+    },
+    "weekdayRule": {
+      "name": "A weekday",
+      "hint": "The first Monday, the last Friday.",
+      "summary": "{ordinal} {weekday}"
+    },
+    "dateRange": {
+      "name": "A range of dates",
+      "hint": "Somewhere between two days of the month.",
+      "summary": "Between the {start}th and the {end}th"
+    },
+    "boundaryDays": {
+      "name": "Days from the month edge",
+      "hint": "The first or last few days of the month.",
+      "summary": "{count} days from the {anchor} of the month"
+    }
+  },
+  "ordinal": {
+    "first": "First",
+    "second": "Second",
+    "third": "Third",
+    "fourth": "Fourth",
+    "last": "Last"
+  },
+  "weekday": {
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday"
+  },
+  "boundary": {
+    "start": "Start",
+    "end": "End"
+  },
+  "incomeScope": {
+    "title": "This income repeats",
+    "body": "Does the new amount apply to this month only, or from now on? Occurrences already received never change.",
+    "thisOne": "Only this one",
+    "allFuture": "From now on"
   }
 }

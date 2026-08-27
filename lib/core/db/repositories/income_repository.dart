@@ -38,6 +38,9 @@ class IncomeRuleRepository
   Future<List<IncomeRecurrenceRule>> inSpace(String spaceId) =>
       selectAliveInSpace(spaceId).get();
 
+  Stream<List<IncomeRecurrenceRule>> watchInSpace(String spaceId) =>
+      selectAliveInSpace(spaceId).watch();
+
   Future<List<IncomeRecurrenceRule>> anchorsInSpace(String spaceId) =>
       (selectAliveInSpace(spaceId)
             ..where(($IncomeRecurrenceRulesTable t) => t.isAnchor.equals(true)))
@@ -123,6 +126,23 @@ class IncomeRuleRepository
       boundaryAnchor: boundaryAnchor,
       boundaryCount: boundaryCount,
       countryCode: countryCode,
+    );
+  }
+
+  /// The rule's own amount, which every occurrence materialised from now on
+  /// inherits. Existing occurrences are the caller's to update — see
+  /// [IncomeRepository.updateFutureAmounts] (spec 5.4).
+  Future<int> setAmount(String ruleId, Decimal? amount) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(
+      db.incomeRecurrenceRules,
+    )..where(($IncomeRecurrenceRulesTable t) => t.id.equals(ruleId))).write(
+      IncomeRecurrenceRulesCompanion(
+        amount: Value<Decimal?>(amount),
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
     );
   }
 

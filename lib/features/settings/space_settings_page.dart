@@ -10,6 +10,7 @@ import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/categories_page.dart';
+import 'package:sielto/features/incomes/income_rules_page.dart';
 
 /// Settings for one Space (spec 3.4).
 ///
@@ -165,9 +166,9 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             ),
           ),
           const SizedBox(height: SageSpace.lg),
-          // Categories are read for the open Space, so the link only makes
-          // sense when this screen is showing that Space.
-          if (isCurrent)
+          // Categories and income rules are read for the open Space, so these
+          // links only make sense when this screen is showing that Space.
+          if (isCurrent) ...<Widget>[
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.label_outline),
@@ -179,6 +180,18 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                 ),
               ),
             ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.repeat),
+              title: Text(tr('income.regularTitle')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext _) => const IncomeRulesPage(),
+                ),
+              ),
+            ),
+          ],
           const Hairline(),
           ListTile(
             contentPadding: EdgeInsets.zero,

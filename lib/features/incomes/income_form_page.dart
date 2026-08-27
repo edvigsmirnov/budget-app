@@ -12,9 +12,15 @@ import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/incomes/income_scope_dialog.dart';
+import 'package:sielto/features/incomes/schedule_editor.dart';
 
-/// Opens the income form. Flow has no schedules — a regular income with a
-/// recurrence rule is M4 — so this covers one-off receipts (spec 5.4).
+/// Opens the income form (spec 5.1, 5.4).
+///
+/// One form for both shapes, as the spec asks: the "make regular" switch is
+/// what decides whether saving writes a single row or a recurrence rule that
+/// materialises many.
 Future<void> openIncomeForm(
   BuildContext context, {
   String? incomeId,
@@ -43,8 +49,21 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
 
   CalendarDate? _date;
   bool _isReceived = false;
+
+  /// Filled in when the receipt is confirmed; defaults to the expected date
+  /// but is the user's to correct (spec 5.4).
+  CalendarDate? _actualDate;
+
+  bool _isRegular = false;
+  ScheduleDraft _schedule = const ScheduleDraft();
+
+  /// Only meaningful in income_driven Spaces, and only once one anchor exists.
+  bool _isAnchor = true;
+  bool _anchorChoiceApplies = false;
+
   Income? _existing;
   bool _loaded = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -67,12 +86,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   }
 
   Future<void> _load() async {
+    final Space space = ref.read(currentSpaceProvider)!;
+    final Repositories repos = ref.read(repositoriesProvider);
     final String? id = widget.incomeId;
+
     if (id != null) {
-      final Repositories repos = ref.read(repositoriesProvider);
-      final List<Income> rows = await repos.incomes.inSpace(
-        ref.read(currentSpaceProvider)!.id,
-      );
+      final List<Income> rows = await repos.incomes.inSpace(space.id);
       final Income? row = rows.where((Income i) => i.id == id).firstOrNull;
       if (row != null) {
         _existing = row;
@@ -81,76 +100,187 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         _notes.text = row.notes ?? '';
         _date = row.expectedDate;
         _isReceived = row.isPaid;
+        _actualDate = row.actualDate ?? row.expectedDate;
       }
+    } else if (space.budgetMode == BudgetMode.incomeDriven) {
+      // The first regular income of the Space becomes the anchor with no
+      // question asked; from the second on the choice is real (spec 5.2).
+      final List<IncomeRecurrenceRule> anchors = await repos.incomeRules
+          .anchorsInSpace(space.id);
+      _anchorChoiceApplies = anchors.isNotEmpty;
     }
+
     _date ??= widget.initialDate ?? ref.read(spaceClockProvider).today();
     if (mounted) setState(() => _loaded = true);
   }
 
-  /// Null is a legitimate answer here: an expected inflow whose figure is not
-  /// known yet stays honest rather than inventing a number (spec 4.7).
+  /// Null is a legitimate answer: an inflow whose figure is not known yet
+  /// stays honest rather than inventing one (spec 4.7).
   Decimal? get _parsedAmount {
     final Decimal? value = parseMoney(_amount.text);
     if (value == null || value <= Decimal.zero) return null;
     return value;
   }
 
-  /// An income can be saved without an amount, but not marked received without
-  /// one (spec 4.5).
+  bool get _amountFieldIsWellFormed =>
+      _amount.text.trim().isEmpty || _parsedAmount != null;
+
+  /// An income saves without an amount, but cannot be marked received without
+  /// one — the period's figures would stay uncomputable (spec 4.7).
   bool get _isValid =>
       _title.text.trim().isNotEmpty &&
+      _amountFieldIsWellFormed &&
       (!_isReceived || _parsedAmount != null) &&
-      (_amount.text.trim().isEmpty || _parsedAmount != null);
+      (!_isRegular || _schedule.isValid) &&
+      !_saving;
 
   Future<void> _save() async {
     final CalendarDate? date = _date;
     if (date == null) return;
-    final Repositories repos = ref.read(repositoriesProvider);
-    final String? notes = _notes.text.trim().isEmpty
-        ? null
-        : _notes.text.trim();
-    final Income? existing = _existing;
+    setState(() => _saving = true);
 
-    if (existing == null) {
-      await repos.incomes.create(
-        spaceId: ref.read(currentSpaceProvider)!.id,
-        title: _title.text,
-        expectedDate: date,
-        amount: _parsedAmount,
-        notes: notes,
-        isPaid: _isReceived,
-      );
-    } else {
-      await repos.incomes.update(
-        existing.id,
-        title: Value<String>(_title.text),
-        amount: Value<Decimal?>(_parsedAmount),
-        expectedDate: Value<CalendarDate>(date),
-        notes: Value<String?>(notes),
-        isPaid: Value<bool>(_isReceived),
+    try {
+      final Space space = ref.read(currentSpaceProvider)!;
+      final Repositories repos = ref.read(repositoriesProvider);
+      final String? notes = _notes.text.trim().isEmpty
+          ? null
+          : _notes.text.trim();
+      final Income? existing = _existing;
+
+      if (existing != null) {
+        await _saveExisting(existing, repos, date, notes);
+      } else if (_isRegular) {
+        await _createRule(space, repos);
+      } else {
+        await repos.incomes.create(
+          spaceId: space.id,
+          title: _title.text,
+          expectedDate: date,
+          amount: _parsedAmount,
+          notes: notes,
+          isPaid: _isReceived,
+        );
+      }
+
+      // Periods and future occurrences follow from the rules, so any change
+      // here can move them.
+      ref.invalidate(periodRefreshProvider);
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _createRule(Space space, Repositories repos) async {
+    final IncomeRecurrenceRule rule = await repos.incomeRules
+        .createFirstAsAnchor(
+          spaceId: space.id,
+          mode: space.budgetMode,
+          title: _title.text,
+          amount: _parsedAmount,
+          scheduleType: _schedule.type,
+          fixedDay: _schedule.type == ScheduleType.fixedDate
+              ? _schedule.fixedDay
+              : null,
+          weekdayOrdinal: _schedule.type == ScheduleType.weekdayRule
+              ? _schedule.ordinal
+              : null,
+          weekdayDay: _schedule.type == ScheduleType.weekdayRule
+              ? _schedule.weekday
+              : null,
+          dateRangeStart: _schedule.type == ScheduleType.dateRange
+              ? _schedule.rangeStart
+              : null,
+          dateRangeEnd: _schedule.type == ScheduleType.dateRange
+              ? _schedule.rangeEnd
+              : null,
+          boundaryAnchor: _schedule.type == ScheduleType.boundaryDays
+              ? _schedule.boundaryAnchor
+              : null,
+          boundaryCount: _schedule.type == ScheduleType.boundaryDays
+              ? _schedule.boundaryCount
+              : null,
+        );
+
+    // createFirstAsAnchor anchors the first rule of the Space on its own; a
+    // later one takes the role the user picked.
+    if (_anchorChoiceApplies && _isAnchor) {
+      await repos.incomeRules.setAnchor(
+        rule.id,
+        isAnchor: true,
+        mode: space.budgetMode,
       );
     }
-    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// Editing one materialised occurrence.
+  ///
+  /// When it belongs to a series, changing the amount asks how far the change
+  /// reaches; the date and the note are always this occurrence alone
+  /// (spec 5.4).
+  Future<void> _saveExisting(
+    Income existing,
+    Repositories repos,
+    CalendarDate date,
+    String? notes,
+  ) async {
+    IncomeScope scope = IncomeScope.thisOne;
+    final bool amountChanged = _parsedAmount != existing.amount;
+    if (existing.recurrenceRuleId != null && amountChanged) {
+      if (!mounted) return;
+      scope = await askIncomeScope(context);
+      if (scope == IncomeScope.cancelled) return;
+    }
+
+    await repos.incomes.update(
+      existing.id,
+      title: Value<String>(_title.text),
+      amount: Value<Decimal?>(_parsedAmount),
+      expectedDate: Value<CalendarDate>(date),
+      notes: Value<String?>(notes),
+      isPaid: Value<bool>(_isReceived),
+      // Clearing the receipt clears the fact with it: the expected date stays,
+      // the actual one no longer exists (spec 5.4).
+      actualDate: Value<CalendarDate?>(_isReceived ? _actualDate : null),
+    );
+
+    if (scope == IncomeScope.allFuture) {
+      await repos.incomeRules.setAmount(
+        existing.recurrenceRuleId!,
+        _parsedAmount,
+      );
+      await repos.incomes.updateFutureAmounts(
+        existing.recurrenceRuleId!,
+        _parsedAmount,
+      );
+    }
   }
 
   Future<void> _delete() async {
     final Income? existing = _existing;
     if (existing == null) return;
     await ref.read(repositoriesProvider).incomes.softDelete(existing.id);
+    ref.invalidate(periodRefreshProvider);
     if (mounted) Navigator.of(context).pop();
   }
 
-  Future<void> _pickDate() async {
-    final CalendarDate current = _date ?? ref.read(spaceClockProvider).today();
+  Future<void> _pickDate({required bool actual}) async {
+    final CalendarDate current =
+        (actual ? _actualDate : _date) ?? ref.read(spaceClockProvider).today();
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: current.toUtcMidnight(),
       firstDate: DateTime.utc(current.year - 10),
       lastDate: DateTime.utc(current.year + 15),
     );
-    if (picked != null) {
-      setState(() => _date = CalendarDate.fromDateTime(picked));
-    }
+    if (picked == null) return;
+    setState(() {
+      if (actual) {
+        _actualDate = CalendarDate.fromDateTime(picked);
+      } else {
+        _date = CalendarDate.fromDateTime(picked);
+      }
+    });
   }
 
   @override
@@ -161,17 +291,21 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       locale: locale,
       currencyCode: space.currencyCode,
     );
+    final DateLabels dates = DateLabels(locale);
 
     if (!_loaded) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final bool isOccurrence = _existing != null;
+    final bool partOfSeries = _existing?.recurrenceRuleId != null;
+
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppBar(
-        title: Text(_existing == null ? tr('income.add') : tr('income.edit')),
+        title: Text(isOccurrence ? tr('income.edit') : tr('income.add')),
         actions: <Widget>[
-          if (_existing != null)
+          if (isOccurrence)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: tr('common.delete'),
@@ -183,6 +317,28 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
           children: <Widget>[
+            if (partOfSeries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: SageSpace.md),
+                child: SageCard(
+                  child: Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.repeat,
+                        size: 16,
+                        color: context.sage.inkLabel,
+                      ),
+                      const SizedBox(width: SageSpace.sm),
+                      Expanded(
+                        child: Text(
+                          tr('income.partOfSeries'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             LabelledField(
               label: tr('income.fieldTitle'),
               child: TextField(
@@ -208,29 +364,65 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               ),
             ),
             const SizedBox(height: SageSpace.lg),
-            LabelledField(
-              label: tr('income.fieldDate'),
-              child: InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(SageRadius.input),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.sage.card,
-                    borderRadius: BorderRadius.circular(SageRadius.input),
-                    border: Border.all(color: context.sage.border),
-                  ),
-                  child: Text(
-                    DateLabels(locale).dayMonth(_date!),
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+
+            // A regular income has no single date: its dates come from the
+            // schedule (spec 5.1, step 3).
+            if (!_isRegular) ...<Widget>[
+              LabelledField(
+                label: tr('income.fieldDate'),
+                child: _DateField(
+                  label: dates.dayMonth(_date!),
+                  onTap: () => _pickDate(actual: false),
                 ),
               ),
-            ),
-            const SizedBox(height: SageSpace.lg),
+              const SizedBox(height: SageSpace.lg),
+            ],
+
+            if (!isOccurrence) ...<Widget>[
+              SwitchListTile.adaptive(
+                value: _isRegular,
+                contentPadding: EdgeInsets.zero,
+                title: Text(tr('income.makeRegular')),
+                subtitle: Text(tr('income.makeRegularHint')),
+                onChanged: (bool value) => setState(() => _isRegular = value),
+              ),
+              if (_isRegular) ...<Widget>[
+                const SizedBox(height: SageSpace.md),
+                ScheduleEditor(
+                  draft: _schedule,
+                  onChanged: (ScheduleDraft next) =>
+                      setState(() => _schedule = next),
+                ),
+                // Anchoring decides period boundaries, so it means nothing
+                // outside income_driven and the form does not offer it there
+                // (spec 5.2).
+                if (_anchorChoiceApplies &&
+                    space.budgetMode == BudgetMode.incomeDriven) ...<Widget>[
+                  const SizedBox(height: SageSpace.lg),
+                  LabelledField(
+                    label: tr('income.role'),
+                    child: SegmentedChoice<bool>(
+                      values: const <bool>[true, false],
+                      selected: _isAnchor,
+                      labelOf: (bool anchor) => anchor
+                          ? tr('income.roleAnchor')
+                          : tr('income.roleAdditional'),
+                      onChanged: (bool anchor) =>
+                          setState(() => _isAnchor = anchor),
+                    ),
+                  ),
+                  const SizedBox(height: SageSpace.xs),
+                  Text(
+                    _isAnchor
+                        ? tr('income.roleAnchorHint')
+                        : tr('income.roleAdditionalHint'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ],
+              const SizedBox(height: SageSpace.lg),
+            ],
+
             LabelledField(
               label: tr('income.fieldNotes'),
               child: TextField(
@@ -239,23 +431,82 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                 maxLength: 5000,
               ),
             ),
-            SwitchListTile.adaptive(
-              value: _isReceived,
-              contentPadding: EdgeInsets.zero,
-              title: Text(tr('income.markReceived')),
-              subtitle: _isReceived && _parsedAmount == null
-                  ? Text(
-                      tr('income.amountRequired'),
-                      style: TextStyle(color: context.sage.danger),
-                    )
-                  : null,
-              onChanged: (bool value) => setState(() => _isReceived = value),
-            ),
+
+            if (!_isRegular) ...<Widget>[
+              SwitchListTile.adaptive(
+                value: _isReceived,
+                contentPadding: EdgeInsets.zero,
+                title: Text(tr('income.markReceived')),
+                subtitle: _isReceived && _parsedAmount == null
+                    ? Text(
+                        tr('income.amountRequired'),
+                        style: TextStyle(color: context.sage.danger),
+                      )
+                    : null,
+                onChanged: (bool value) => setState(() {
+                  _isReceived = value;
+                  _actualDate ??= _date;
+                }),
+              ),
+              // The date the money actually arrived, which the expected date
+              // is not for. It changes no calculation (spec 5.4).
+              if (_isReceived) ...<Widget>[
+                const SizedBox(height: SageSpace.sm),
+                LabelledField(
+                  label: tr('income.fieldActualDate'),
+                  child: _DateField(
+                    label: dates.dayMonth(_actualDate ?? _date!),
+                    onTap: () => _pickDate(actual: true),
+                  ),
+                ),
+                if (_actualDate != null && _actualDate != _date)
+                  Padding(
+                    padding: const EdgeInsets.only(top: SageSpace.xs),
+                    child: Text(
+                      tr('income.actualDateNote'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ],
+
             const SizedBox(height: SageSpace.lg),
             FilledButton(
               onPressed: _isValid ? _save : null,
               child: Text(tr('common.save')),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DateField extends StatelessWidget {
+  const _DateField({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SageRadius.input),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: sage.card,
+          borderRadius: BorderRadius.circular(SageRadius.input),
+          border: Border.all(color: sage.border),
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+            ),
+            Icon(Icons.calendar_today_outlined, size: 16, color: sage.inkLabel),
           ],
         ),
       ),

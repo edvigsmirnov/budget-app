@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -37,7 +38,46 @@ IncomeSchedule? scheduleOf(IncomeRecurrenceRule rule) {
 
 /// A one-line description of the rule, for a list row.
 ///
-/// Deliberately built from the stored fields rather than the schedule object:
-/// the string has to survive a rule whose fields [scheduleOf] would reject.
-String scheduleSummaryKey(IncomeRecurrenceRule rule) =>
-    'schedule.${rule.scheduleType.name}.summary';
+/// Built from the stored fields rather than from [scheduleOf], so it still
+/// describes a rule whose fields that function would reject.
+String scheduleSummary(IncomeRecurrenceRule rule) {
+  switch (rule.scheduleType) {
+    case ScheduleType.fixedDate:
+      return tr(
+        'schedule.fixedDate.summary',
+        namedArgs: <String, String>{'day': '${rule.fixedDay ?? '?'}'},
+      );
+
+    case ScheduleType.weekdayRule:
+      final WeekdayOrdinal? ordinal = rule.weekdayOrdinal;
+      final Weekday? weekday = rule.weekdayDay;
+      if (ordinal == null || weekday == null) return tr('schedule.incomplete');
+      return tr(
+        'schedule.weekdayRule.summary',
+        namedArgs: <String, String>{
+          'ordinal': tr('ordinal.${ordinal.name}'),
+          'weekday': tr('weekday.${weekday.name}'),
+        },
+      );
+
+    case ScheduleType.dateRange:
+      return tr(
+        'schedule.dateRange.summary',
+        namedArgs: <String, String>{
+          'start': '${rule.dateRangeStart ?? '?'}',
+          'end': '${rule.dateRangeEnd ?? '?'}',
+        },
+      );
+
+    case ScheduleType.boundaryDays:
+      final BoundaryAnchor? anchor = rule.boundaryAnchor;
+      if (anchor == null) return tr('schedule.incomplete');
+      return tr(
+        'schedule.boundaryDays.summary',
+        namedArgs: <String, String>{
+          'count': '${rule.boundaryCount ?? '?'}',
+          'anchor': tr('boundary.${anchor.name}'),
+        },
+      );
+  }
+}
