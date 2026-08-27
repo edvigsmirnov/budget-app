@@ -1,4 +1,4 @@
-# Budget
+# Sielto
 
 An offline-first planner for mandatory payments and shared budgets.
 
