@@ -1,3 +1,5 @@
+import 'dart:ui' show PathMetric;
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
@@ -230,6 +232,115 @@ class StatColumn extends StatelessWidget {
       ],
     );
   }
+}
+
+/// An icon on a soft square: the design's affordance for a secondary action
+/// that sits beside content rather than in a toolbar.
+class SoftIconButton extends StatelessWidget {
+  const SoftIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.size = 36,
+    super.key,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SageRadius.button),
+      child: Tooltip(
+        message: tooltip,
+        child: Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sage.canvas,
+            borderRadius: BorderRadius.circular(SageRadius.button),
+            border: Border.all(color: sage.border),
+          ),
+          child: Icon(icon, size: 18, color: sage.inkSecondary),
+        ),
+      ),
+    );
+  }
+}
+
+/// A dashed outline button, which reads as a slot to fill rather than as one
+/// more item in the list above it.
+class DashedButton extends StatelessWidget {
+  const DashedButton({required this.label, required this.onTap, super.key});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SageRadius.card),
+      child: CustomPaint(
+        painter: _DashedBorderPainter(
+          color: sage.border,
+          radius: SageRadius.card,
+        ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyLarge
+                ?.copyWith(color: sage.inkSecondary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Walked by hand: Flutter strokes no dashed border of its own.
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter({required this.color, required this.radius});
+
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final Path path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
+      );
+
+    const double dash = 6;
+    const double gap = 4;
+    for (final PathMetric metric in path.computeMetrics()) {
+      double start = 0;
+      while (start < metric.length) {
+        final double end = (start + dash).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(start, end), paint);
+        start = end + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter old) =>
+      old.color != color || old.radius != radius;
 }
 
 /// A label and its figure on one line, label left and value right.

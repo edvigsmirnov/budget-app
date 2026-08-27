@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
@@ -76,7 +77,9 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         ...?trailing,
         Padding(
           padding: const EdgeInsets.only(right: SageSpace.md),
-          child: _GearButton(
+          child: SoftIconButton(
+            icon: Icons.settings_outlined,
+            tooltip: tr('spaceSettings.title'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (BuildContext _) =>
@@ -122,40 +125,6 @@ class _ProfileAvatar extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleSmall
                       ?.copyWith(color: sage.accentStrong),
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The Space settings gear, as a soft square rather than a bare icon.
-class _GearButton extends StatelessWidget {
-  const _GearButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.button),
-      child: Tooltip(
-        message: tr('spaceSettings.title'),
-        child: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: sage.card,
-            borderRadius: BorderRadius.circular(SageRadius.button),
-            border: Border.all(color: sage.border),
-          ),
-          child: Icon(
-            Icons.settings_outlined,
-            size: 18,
-            color: sage.inkSecondary,
-          ),
         ),
       ),
     );

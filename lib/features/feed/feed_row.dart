@@ -9,10 +9,14 @@ import 'package:sielto/features/feed/feed_model.dart';
 
 /// Row heights per density (spec 4.5). Compact drops to title and amount on
 /// one line; spacious adds category and status underneath.
+///
+/// Sized against the type ramp, not against the design mock's 300px frames:
+/// at 16px body text the mock's 44/56/72 left every row cramped and the three
+/// steps nearly indistinguishable.
 double rowHeightFor(FeedDensity density) => switch (density) {
-  FeedDensity.compact => 44,
-  FeedDensity.standard => 56,
-  FeedDensity.spacious => 72,
+  FeedDensity.compact => 52,
+  FeedDensity.standard => 66,
+  FeedDensity.spacious => 88,
 };
 
 /// One record in the Feed.
@@ -148,11 +152,20 @@ class FeedRowTile extends StatelessWidget {
                 if (record.notes != null && record.notes!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(right: SageSpace.sm),
-                    child: IconButton(
-                      icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
-                      visualDensity: VisualDensity.compact,
-                      tooltip: tr('payment.note'),
-                      onPressed: () => _showNote(context, record.notes!),
+                    child: InkWell(
+                      onTap: () => _showNote(context, record.notes!),
+                      customBorder: const CircleBorder(),
+                      child: Tooltip(
+                        message: tr('payment.note'),
+                        child: Padding(
+                          padding: const EdgeInsets.all(SageSpace.xs),
+                          child: Icon(
+                            Icons.sticky_note_2_outlined,
+                            size: 18,
+                            color: sage.inkLabel,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 Text(

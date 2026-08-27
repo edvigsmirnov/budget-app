@@ -76,85 +76,43 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       backgroundColor: context.sage.surface,
       appBar: AppBar(title: Text(tr('spaceSettings.title'))),
       body: ListView(
-        padding: const EdgeInsets.all(SageSpace.formGutter),
+        padding: const EdgeInsets.symmetric(
+          horizontal: SageSpace.formGutter,
+          vertical: SageSpace.md,
+        ),
         children: <Widget>[
-          LabelledField(
-            label: tr('space.fieldTitle'),
-            child: TextField(
-              controller: _title,
-              textCapitalization: TextCapitalization.sentences,
-              onSubmitted: (String value) => repo.setTitle(space.id, value),
-              onTapOutside: (PointerDownEvent _) =>
-                  repo.setTitle(space.id, _title.text),
-            ),
+          // The Space's identity: its mark and its name on one line, as the
+          // design opens the screen (design section 3.4).
+          Row(
+            children: <Widget>[
+              _SpaceMark(spaceId: space.id, title: space.title),
+              const SizedBox(width: SageSpace.md),
+              Expanded(
+                child: TextField(
+                  controller: _title,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  onSubmitted: (String value) => repo.setTitle(space.id, value),
+                  onTapOutside: (PointerDownEvent _) =>
+                      repo.setTitle(space.id, _title.text),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: SageSpace.lg),
-          LabelledField(
+
+          // Facts read as label-left, value-right rows; only what can be
+          // changed gets a control of its own.
+          _FactRow(
             label: tr('space.fieldMode'),
-            child: SageCard(
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      tr('mode.${space.budgetMode.name}.name'),
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ),
-                  Icon(
-                    Icons.lock_outline,
-                    size: 18,
-                    color: context.sage.inkLabel,
-                  ),
-                ],
-              ),
-            ),
+            value: _LockedPill(text: tr('mode.${space.budgetMode.name}.name')),
           ),
-          const SizedBox(height: SageSpace.xs),
           Text(
             tr('space.modeIsPermanent'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: SageSpace.lg),
-          LabelledField(
-            label: tr('space.fieldCurrency'),
-            child: DropdownButtonFormField<String>(
-              initialValue: space.currencyCode,
-              items: <DropdownMenuItem<String>>[
-                for (final String code in Currencies.offered(
-                  space.currencyCode,
-                ))
-                  DropdownMenuItem<String>(
-                    value: code,
-                    child: Text(Currencies.label(code, locale)),
-                  ),
-              ],
-              onChanged: (_currencyEditable ?? false)
-                  ? (String? code) async {
-                      if (code == null) return;
-                      await repo.setCurrency(space.id, code);
-                    }
-                  : null,
-            ),
-          ),
-          if (_currencyEditable == false)
-            Padding(
-              padding: const EdgeInsets.only(top: SageSpace.xs),
-              child: Text(
-                tr('space.currencyFrozen'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          const SizedBox(height: SageSpace.lg),
-          LabelledField(
-            label: tr('space.fieldTimezone'),
-            child: SageCard(
-              child: Text(
-                space.timezone,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
-          ),
-          const SizedBox(height: SageSpace.lg),
+
           LabelledField(
             label: tr('space.fieldFeedOrder'),
             child: SegmentedChoice<FeedOrderMode>(
@@ -166,42 +124,78 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             ),
           ),
           const SizedBox(height: SageSpace.lg),
+
+          if (_currencyEditable ?? false)
+            LabelledField(
+              label: tr('space.fieldCurrency'),
+              child: DropdownButtonFormField<String>(
+                initialValue: space.currencyCode,
+                items: <DropdownMenuItem<String>>[
+                  for (final String code in Currencies.offered(
+                    space.currencyCode,
+                  ))
+                    DropdownMenuItem<String>(
+                      value: code,
+                      child: Text(Currencies.label(code, locale)),
+                    ),
+                ],
+                onChanged: (String? code) async {
+                  if (code == null) return;
+                  await repo.setCurrency(space.id, code);
+                },
+              ),
+            )
+          else
+            // Frozen by the first record, so it reads as a fact rather than a
+            // disabled control (spec 9.2).
+            _FactRow(
+              label: tr('space.fieldCurrency'),
+              value: _LockedPill(text: space.currencyCode),
+            ),
+          const Hairline(),
+
+          _FactRow(
+            label: tr('space.fieldTimezone'),
+            value: Text(
+              space.timezone,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          const Hairline(),
+
           // Categories and income rules are read for the open Space, so these
           // links only make sense when this screen is showing that Space.
           if (isCurrent) ...<Widget>[
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.label_outline),
               title: Text(tr('category.title')),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (BuildContext _) => const CategoriesPage(),
                 ),
               ),
             ),
+            const Hairline(),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.repeat),
               title: Text(tr('income.regularTitle')),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (BuildContext _) => const IncomeRulesPage(),
                 ),
               ),
             ),
+            const Hairline(),
           ],
-          const Hairline(),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.archive_outlined, color: context.sage.danger),
-            title: Text(
-              tr('space.archive'),
-              style: TextStyle(color: context.sage.danger),
-            ),
+
+          const SizedBox(height: SageSpace.xl),
+          _DangerButton(
+            label: tr('space.archive'),
             onTap: () => _archive(space),
           ),
+          const SizedBox(height: SageSpace.sm),
           Text(
             tr('space.archiveBody'),
             style: Theme.of(context).textTheme.bodySmall,
@@ -233,5 +227,124 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         .setArchived(space.id, isArchived: true);
     await ref.read(currentSpaceIdProvider.notifier).select(null);
     if (mounted) Navigator.of(context).pop();
+  }
+}
+
+/// The Space's mark: its initial on a soft square.
+///
+/// The design shows a chosen icon here; that needs a column the schema does
+/// not have yet, so the initial stands in rather than an empty placeholder.
+class _SpaceMark extends StatelessWidget {
+  const _SpaceMark({required this.spaceId, required this.title});
+
+  final String spaceId;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final String initial = title.trim().isEmpty
+        ? '?'
+        : title.trim().characters.first.toUpperCase();
+
+    return Container(
+      width: 48,
+      height: 48,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: sage.accentTintAlt,
+        borderRadius: BorderRadius.circular(SageRadius.card),
+      ),
+      child: Text(
+        initial,
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(color: sage.accentStrong),
+      ),
+    );
+  }
+}
+
+/// A read-only setting: what it is on the left, what it says on the right.
+class _FactRow extends StatelessWidget {
+  const _FactRow({required this.label, required this.value});
+
+  final String label;
+  final Widget value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+    child: Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+        ),
+        const SizedBox(width: SageSpace.md),
+        value,
+      ],
+    ),
+  );
+}
+
+/// A value that cannot change, and says so.
+class _LockedPill extends StatelessWidget {
+  const _LockedPill({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: sage.canvas,
+        borderRadius: BorderRadius.circular(SageRadius.pill),
+        border: Border.all(color: sage.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.lock_outline, size: 13, color: sage.inkLabel),
+          const SizedBox(width: SageSpace.xs),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.labelMedium
+                ?.copyWith(color: sage.inkSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A destructive action, on its own tint rather than as a red list row.
+class _DangerButton extends StatelessWidget {
+  const _DangerButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SageRadius.button),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: sage.dangerTint,
+          borderRadius: BorderRadius.circular(SageRadius.button),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodyLarge
+              ?.copyWith(color: sage.danger),
+        ),
+      ),
+    );
   }
 }

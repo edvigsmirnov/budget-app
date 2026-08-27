@@ -64,9 +64,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   /// arrows above it move between cycles instead.
   void _extendOnEdge() {
     if (!_scroll.hasClients) return;
-    if (ref.read(currentSpaceProvider)?.budgetMode == BudgetMode.incomeDriven) {
-      return;
-    }
+    // Only a cycle view has nothing to widen. Before the first regular income
+    // there is no cycle, and the list is windowed like Flow's.
+    if (ref.read(selectedPeriodProvider) != null) return;
     final ScrollPosition position = _scroll.position;
     const double margin = 400;
     if (position.pixels <= position.minScrollExtent + margin) {
@@ -173,15 +173,36 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     if (payments == null || incomes == null) return null;
 
     if (space.budgetMode == BudgetMode.incomeDriven) {
+      // An income-driven Space with no regular income yet has no periods at
+      // all, which is a valid permanent state (spec 4.7). The cycle view has
+      // nothing to show, so the list falls back to plain chronological order
+      // rather than waiting for a period that will never arrive.
+      if (ref.watch(selectedPeriodProvider) == null) {
+        return _unscoped(space, payments, incomes);
+      }
+
       final PeriodLedger? ledger = ref.watch(periodLedgerProvider).value;
       if (ledger == null) return null;
-      final String periodId = ledger.period.id;
+      final BudgetPeriod period = ledger.period;
+      final CalendarDate? end = period.endDate;
+
+      // A record is in the cycle when it is bound to it, or when it is not
+      // bound anywhere and its date falls inside — which is every record
+      // between being written and the next recompute binding it.
+      bool inPeriod(String? boundTo, CalendarDate date) {
+        if (boundTo != null) return boundTo == period.id;
+        return !period.startDate.isAfter(date) &&
+            (end == null || !end.isBefore(date));
+      }
+
       return _FeedSource(
         records: <FeedRecord>[
           for (final Payment p in payments)
-            if (p.budgetPeriodId == periodId) FeedRecord.fromPayment(p),
+            if (inPeriod(p.budgetPeriodId, p.dueDate))
+              FeedRecord.fromPayment(p),
           for (final Income i in incomes)
-            if (i.budgetPeriodId == periodId) FeedRecord.fromIncome(i),
+            if (inPeriod(i.budgetPeriodId, i.expectedDate))
+              FeedRecord.fromIncome(i),
         ],
         today: ledger.today,
         coverage: ledger.coverageByEntry,
@@ -209,6 +230,33 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       cutoffEntryId: flow.cascade.all.cutoffEntryId,
       available: flow.available,
       freeCash: flow.freeCash,
+      byPeriod: false,
+    );
+  }
+
+  /// Every record in the window, with no figures above them.
+  ///
+  /// The state an income-driven Space is in before its first regular income:
+  /// records exist and must be visible, but there is no anchor to compute a
+  /// free-money figure from, and printing a zero would be a lie (spec 4.7).
+  _FeedSource _unscoped(
+    Space space,
+    List<Payment> payments,
+    List<Income> incomes,
+  ) {
+    final FeedWindow window = ref.watch(feedWindowProvider);
+    return _FeedSource(
+      records: <FeedRecord>[
+        for (final Payment p in payments)
+          if (window.contains(p.dueDate)) FeedRecord.fromPayment(p),
+        for (final Income i in incomes)
+          if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
+      ],
+      today: ref.watch(spaceClockProvider).today(),
+      coverage: const <String, bool>{},
+      cutoffEntryId: null,
+      available: null,
+      freeCash: null,
       byPeriod: false,
     );
   }
@@ -464,7 +512,9 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
           Expanded(
             child: available == null
                 ? StatColumn(
-                    label: tr('feed.periodMoney'),
+                    label: source.byPeriod
+                        ? tr('feed.periodMoney')
+                        : tr('feed.currentMoney'),
                     value: tr('income.amountUnknown'),
                   )
                 : _TotalBlock(

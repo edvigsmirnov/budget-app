@@ -40,9 +40,6 @@ class _SpaceSwitcher extends ConsumerStatefulWidget {
 }
 
 class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
-  /// Search appears only once the list is long enough to need it.
-  static const int _searchThreshold = 6;
-
   String _query = '';
 
   @override
@@ -79,17 +76,15 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: SageSpace.md),
-            if (spaces.length >= _searchThreshold) ...<Widget>[
-              TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  hintText: tr('space.search'),
-                  isDense: true,
-                ),
-                onChanged: (String value) => setState(() => _query = value),
+            TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search, size: 20),
+                hintText: tr('space.search'),
+                isDense: true,
               ),
-              const SizedBox(height: SageSpace.md),
-            ],
+              onChanged: (String value) => setState(() => _query = value),
+            ),
+            const SizedBox(height: SageSpace.md),
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
@@ -105,13 +100,9 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               ),
             ),
             const SizedBox(height: SageSpace.md),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.add, size: 20),
-                label: Text(tr('space.createTitle')),
-                onPressed: _createSpace,
-              ),
+            DashedButton(
+              label: '+ ${tr('space.createTitle')}',
+              onTap: _createSpace,
             ),
             const SizedBox(height: SageSpace.md),
             const Hairline(),
@@ -188,57 +179,60 @@ class _SpaceRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       onTap: onOpen,
-      leading: _Avatar(title: space.title, highlighted: isCurrent),
-      title: Row(
-        children: <Widget>[
-          Flexible(
-            child: Text(
-              space.title,
-              overflow: TextOverflow.ellipsis,
-              style: text.bodyLarge?.copyWith(
-                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-          const SizedBox(width: SageSpace.sm),
-          // Cloud or device, so where the data lives reads at a glance
-          // (spec 3.1).
-          Icon(
-            space.storageMode == StorageMode.cloud
-                ? Icons.cloud_outlined
-                : Icons.smartphone,
-            size: 15,
-            color: sage.inkLabel,
-          ),
-        ],
+      leading: _Avatar(
+        spaceId: space.id,
+        title: space.title,
+        highlighted: isCurrent,
+      ),
+      title: Text(
+        space.title,
+        overflow: TextOverflow.ellipsis,
+        style: text.bodyLarge?.copyWith(
+          fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
+        ),
       ),
       subtitle: Padding(
-        padding: const EdgeInsets.only(top: 3),
-        child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: sage.accentTintAlt,
-              borderRadius: BorderRadius.circular(SageRadius.pill),
+        padding: const EdgeInsets.only(top: 4),
+        child: Row(
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: sage.accentTintAlt,
+                borderRadius: BorderRadius.circular(SageRadius.pill),
+              ),
+              child: Text(
+                tr('mode.${space.budgetMode.name}.name'),
+                style: text.labelSmall?.copyWith(color: sage.accentStrong),
+              ),
             ),
-            child: Text(
-              tr('mode.${space.budgetMode.name}.name'),
-              style: text.labelSmall?.copyWith(color: sage.accentStrong),
+            const SizedBox(width: SageSpace.sm),
+            // Cloud or device, so where the data lives reads at a glance
+            // (spec 3.1). Beside the mode rather than beside the name, which
+            // the design keeps for the name alone.
+            Icon(
+              space.storageMode == StorageMode.cloud
+                  ? Icons.cloud_outlined
+                  : Icons.smartphone,
+              size: 14,
+              color: sage.inkLabel,
             ),
-          ),
+          ],
         ),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          if (coverage != null) CoverageDot(coverage!, size: 9),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 20),
+          if (coverage != null) ...<Widget>[
+            CoverageDot(coverage!, size: 10),
+            const SizedBox(width: SageSpace.md),
+          ],
+          // Opens that Space's settings without switching to it — the second
+          // of the spec's three entry points (spec 3.4).
+          SoftIconButton(
+            icon: Icons.settings_outlined,
             tooltip: tr('spaceSettings.title'),
-            // Opens that Space's settings without switching to it — the second
-            // of the spec's three entry points (spec 3.4).
-            onPressed: onSettings,
+            onTap: onSettings,
           ),
         ],
       ),
@@ -246,11 +240,30 @@ class _SpaceRow extends StatelessWidget {
   }
 }
 
+/// The disc with the Space's initial (design section 3.1).
+///
+/// The colour is derived from the id, so a Space keeps the same one for as
+/// long as it exists. It is decoration, not status: the coverage dot on the
+/// right carries the meaning, and this palette stays clear of it.
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.title, required this.highlighted});
+  const _Avatar({
+    required this.spaceId,
+    required this.title,
+    required this.highlighted,
+  });
 
+  final String spaceId;
   final String title;
   final bool highlighted;
+
+  static const List<Color> _palette = <Color>[
+    Color(0xFF6F9A74),
+    Color(0xFFCB8B52),
+    Color(0xFF6E8FA8),
+    Color(0xFF8A7BA8),
+    Color(0xFF5F7D7A),
+    Color(0xFFA8748A),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -258,19 +271,23 @@ class _Avatar extends StatelessWidget {
     final String initial = title.trim().isEmpty
         ? '?'
         : title.trim().characters.first.toUpperCase();
+    final Color ground = _palette[spaceId.hashCode.abs() % _palette.length];
 
     return Container(
-      width: 38,
-      height: 38,
+      width: 42,
+      height: 42,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: highlighted ? sage.accent : sage.accentTintAlt,
+        color: ground,
         shape: BoxShape.circle,
+        // The open Space wears a ring rather than a different fill, so the
+        // colour stays the Space's own identity.
+        border: highlighted ? Border.all(color: sage.ink, width: 2) : null,
       ),
       child: Text(
         initial,
         style: Theme.of(context).textTheme.titleSmall
-            ?.copyWith(color: highlighted ? sage.accentOn : sage.accentStrong),
+            ?.copyWith(color: Colors.white),
       ),
     );
   }
