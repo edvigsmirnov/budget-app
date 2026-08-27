@@ -31,18 +31,33 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
 
   /// The picker list: active categories in drag order.
   Future<List<Category>> inSpace(String spaceId) =>
-      (selectAliveInSpace(spaceId)
-            ..orderBy(<OrderClauseGenerator<$CategoriesTable>>[
-              ($CategoriesTable t) => OrderingTerm(expression: t.sortOrder),
-              ($CategoriesTable t) => OrderingTerm(expression: t.title),
-            ]))
-          .get();
+      _selectInSpace(spaceId).get();
+
+  Stream<List<Category>> watchInSpace(String spaceId) =>
+      _selectInSpace(spaceId).watch();
+
+  SimpleSelectStatement<$CategoriesTable, Category> _selectInSpace(
+    String spaceId,
+  ) =>
+      selectAliveInSpace(spaceId)
+        ..orderBy(<OrderClauseGenerator<$CategoriesTable>>[
+          ($CategoriesTable t) => OrderingTerm(expression: t.sortOrder),
+          ($CategoriesTable t) => OrderingTerm(expression: t.title),
+        ]);
 
   /// Including soft-deleted ones. Analytics still names them, suffixed
   /// "(deleted)" (spec 7).
-  Future<List<Category>> allEverInSpace(String spaceId) => (db.select(
-    db.categories,
-  )..where(($CategoriesTable t) => t.spaceId.equals(spaceId))).get();
+  Future<List<Category>> allEverInSpace(String spaceId) =>
+      _selectAllEver(spaceId).get();
+
+  Stream<List<Category>> watchAllEverInSpace(String spaceId) =>
+      _selectAllEver(spaceId).watch();
+
+  SimpleSelectStatement<$CategoriesTable, Category> _selectAllEver(
+    String spaceId,
+  ) =>
+      db.select(db.categories)
+        ..where(($CategoriesTable t) => t.spaceId.equals(spaceId));
 
   Future<Category> create({
     required String spaceId,

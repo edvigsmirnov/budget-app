@@ -180,14 +180,18 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
   @override
   TableInfo<$IncomesTable, Income> get table => db.incomes;
 
-  Future<List<Income>> inSpace(String spaceId) =>
-      (selectAliveInSpace(spaceId)
-            ..orderBy(<OrderClauseGenerator<$IncomesTable>>[
-              ($IncomesTable t) => OrderingTerm(expression: t.expectedDate),
-              ($IncomesTable t) => OrderingTerm(expression: t.sortOrder),
-              ($IncomesTable t) => OrderingTerm(expression: t.id),
-            ]))
-          .get();
+  Future<List<Income>> inSpace(String spaceId) => _selectInSpace(spaceId).get();
+
+  Stream<List<Income>> watchInSpace(String spaceId) =>
+      _selectInSpace(spaceId).watch();
+
+  SimpleSelectStatement<$IncomesTable, Income> _selectInSpace(String spaceId) =>
+      selectAliveInSpace(spaceId)
+        ..orderBy(<OrderClauseGenerator<$IncomesTable>>[
+          ($IncomesTable t) => OrderingTerm(expression: t.expectedDate),
+          ($IncomesTable t) => OrderingTerm(expression: t.sortOrder),
+          ($IncomesTable t) => OrderingTerm(expression: t.id),
+        ]);
 
   Future<List<Income>> forRule(String ruleId) =>
       (selectAlive()
@@ -248,6 +252,21 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
         actualDate: actualDate,
         notes: notes,
         isPaid: isPaid,
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
+  }
+
+  /// Manual position within the day, set by a drag in the Feed.
+  Future<int> setSortOrder(String id, int sortOrder) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(
+      db.incomes,
+    )..where(($IncomesTable t) => t.id.equals(id))).write(
+      IncomesCompanion(
+        sortOrder: Value<int>(sortOrder),
         syncStatus: const Value<SyncStatus>(SyncStatus.pending),
         lastModifiedBy: Value<String?>(s.author),
         clientEditedAt: Value<DateTime>(s.editedAt),

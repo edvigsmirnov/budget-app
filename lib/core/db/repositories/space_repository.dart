@@ -26,17 +26,25 @@ class SpaceRepository {
   final AppDatabase db;
   final SpaceClock clock;
 
-  Future<List<Space>> all() =>
-      (db.select(db.spaces)
-            ..where(($SpacesTable t) => t.isArchived.equals(false))
-            ..orderBy(<OrderClauseGenerator<$SpacesTable>>[
-              ($SpacesTable t) => OrderingTerm(expression: t.createdAt),
-            ]))
-          .get();
+  Future<List<Space>> all() => _selectAll().get();
 
-  Future<Space?> byId(String id) => (db.select(
-    db.spaces,
-  )..where(($SpacesTable t) => t.id.equals(id))).getSingleOrNull();
+  /// The same list as [all], re-emitted whenever the table changes. The UI
+  /// reads this rather than re-querying after every write.
+  Stream<List<Space>> watchAll() => _selectAll().watch();
+
+  Future<Space?> byId(String id) => _selectById(id).getSingleOrNull();
+
+  Stream<Space?> watchById(String id) => _selectById(id).watchSingleOrNull();
+
+  SimpleSelectStatement<$SpacesTable, Space> _selectAll() =>
+      db.select(db.spaces)
+        ..where(($SpacesTable t) => t.isArchived.equals(false))
+        ..orderBy(<OrderClauseGenerator<$SpacesTable>>[
+          ($SpacesTable t) => OrderingTerm(expression: t.createdAt),
+        ]);
+
+  SimpleSelectStatement<$SpacesTable, Space> _selectById(String id) =>
+      db.select(db.spaces)..where(($SpacesTable t) => t.id.equals(id));
 
   Future<Space> create({
     required String title,
@@ -69,6 +77,24 @@ class SpaceRepository {
             createdAt: clock.nowUtc(),
           ),
         );
+  }
+
+  /// Cosmetic, so it is editable forever and needs no confirmation
+  /// (spec 3.4).
+  Future<int> setTitle(String spaceId, String title) =>
+      (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
+          .write(SpacesCompanion(title: Value<String>(title.trim())));
+
+  /// Changes which "today" every date comparison in this Space resolves
+  /// against (spec 9.2). Rejected for an unknown zone rather than silently
+  /// storing a name nothing can look up.
+  Future<int> setTimezone(String spaceId, String timezone) {
+    if (!SpaceClock.isKnownTimezone(timezone)) {
+      throw ArgumentError.value(timezone, 'timezone', 'unknown IANA zone');
+    }
+    return (db.update(db.spaces)
+          ..where(($SpacesTable t) => t.id.equals(spaceId)))
+        .write(SpacesCompanion(timezone: Value<String>(timezone)));
   }
 
   /// True until the Space holds its first payment or income. "First record"

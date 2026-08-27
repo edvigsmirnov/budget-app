@@ -112,4 +112,57 @@ void main() {
     expect(late.isAfter(early), isTrue);
     expect(early.isBefore(early), isFalse);
   });
+
+  group('addMonths', () {
+    test('keeps the day of the month where it exists', () {
+      expect(
+        CalendarDate.parse('2026-03-10').addMonths(1),
+        CalendarDate.parse('2026-04-10'),
+      );
+    });
+
+    test('clamps into a short month instead of overflowing', () {
+      // Overflow would silently move a monthly series into the next month.
+      expect(
+        CalendarDate.parse('2026-01-31').addMonths(1),
+        CalendarDate.parse('2026-02-28'),
+      );
+      expect(
+        CalendarDate.parse('2026-03-31').addMonths(1),
+        CalendarDate.parse('2026-04-30'),
+      );
+    });
+
+    test('takes the 29th in a leap February', () {
+      expect(
+        CalendarDate.parse('2028-01-31').addMonths(1),
+        CalendarDate.parse('2028-02-29'),
+      );
+    });
+
+    test('crosses year boundaries in both directions', () {
+      expect(
+        CalendarDate.parse('2026-11-15').addMonths(3),
+        CalendarDate.parse('2027-02-15'),
+      );
+      expect(
+        CalendarDate.parse('2026-02-15').addMonths(-3),
+        CalendarDate.parse('2025-11-15'),
+      );
+    });
+
+    test('zero is the identity', () {
+      expect(
+        CalendarDate.parse('2026-03-10').addMonths(0),
+        CalendarDate.parse('2026-03-10'),
+      );
+    });
+
+    test('twelve months is the same day a year on', () {
+      expect(
+        CalendarDate.parse('2026-03-10').addMonths(12),
+        CalendarDate.parse('2027-03-10'),
+      );
+    });
+  });
 }

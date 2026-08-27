@@ -57,6 +57,21 @@ class CalendarDate implements Comparable<CalendarDate> {
     return CalendarDate(d.year, d.month, d.day);
   }
 
+  /// The same day-of-month [months] later, clamped to the target month's
+  /// length: the 31st plus one month is 28 or 29 February, not 2 or 3 March.
+  /// Overflow would silently move a monthly series into the wrong month.
+  CalendarDate addMonths(int months) {
+    final int total = year * 12 + (month - 1) + months;
+    final int targetYear = total ~/ 12;
+    final int targetMonth = total % 12 + 1;
+    final int lastDay = CalendarDate.from(
+      targetYear,
+      targetMonth + 1,
+      1,
+    ).addDays(-1).day;
+    return CalendarDate(targetYear, targetMonth, day > lastDay ? lastDay : day);
+  }
+
   /// Whole days from this date to [other]; negative if [other] is earlier.
   int daysUntil(CalendarDate other) =>
       other.toUtcMidnight().difference(toUtcMidnight()).inDays;

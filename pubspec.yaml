@@ -5,7 +5,7 @@ publish_to: 'none'
 # Minor tracks the milestone: 0.1.0 = M0, 0.2.0 = M1, 1.0.0 = public release at
 # M11. The build number here is only for local builds; CI overrides it with the
 # workflow run number so every artifact is unique and monotonic.
-version: 0.3.0+1
+version: 0.4.0+1
 
 environment:
   sdk: ^3.13.1
@@ -24,6 +24,9 @@ dependencies:
   flutter_riverpod: ^3.4.2
   # Envelope A key: Keystore / Credential Manager / libsecret.
   flutter_secure_storage: ^11.0.0
+  # The device's IANA zone name, to seed a new Space's timezone. Reads
+  # /etc/localtime on Linux and the Win32 API on Windows; no system packages.
+  flutter_timezone: ^5.1.0
   # Number and date formatting. Locale comes from the device, currency symbol
   # from the Space -- the two are passed to the formatter separately.
   intl: ^0.20.3
@@ -32,6 +35,9 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.6
   riverpod_annotation: ^4.0.6
+  # Device-local settings: theme, feed density, the local user id. Nothing
+  # sensitive and nothing synced, so it stays outside the encrypted database.
+  shared_preferences: ^2.5.3
   # Bundles SQLCipher through Dart hooks; see the `hooks` block below.
   sqlite3: ^3.5.2
   # IANA database. A Space's "today" is its own timezone's, not the device's
@@ -46,9 +52,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   riverpod_generator: ^4.0.8
-  # easy_localization reads the saved locale through it; widget tests must
-  # install a mock store before EasyLocalization.ensureInitialized().
-  shared_preferences: ^2.5.3
 
 # Swaps the bundled SQLite for a SQLCipher build on every native target.
 # Replaces sqlcipher_flutter_libs, which is end-of-life.

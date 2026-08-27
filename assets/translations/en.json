@@ -1,30 +1,231 @@
 {
   "common": {
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "save": "Save",
+    "delete": "Delete",
+    "close": "Close",
+    "undo": "Undo",
+    "loadFailed": "Could not load this data"
   },
   "theme": {
     "system": "System",
     "light": "Light",
     "dark": "Dark"
   },
+  "language": {
+    "en": "English",
+    "ru": "Русский"
+  },
+  "density": {
+    "compact": "Compact",
+    "standard": "Standard",
+    "spacious": "Spacious"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "feed": "Feed",
+    "calendar": "Calendar"
+  },
+  "onboarding": {
+    "welcomeTitle": "Welcome",
+    "welcomeBody": "No account, no email, no password. Your data stays on this device until you decide otherwise.",
+    "fieldNickname": "Nickname",
+    "nicknameHint": "Optional",
+    "nicknameWhy": "Used inside the app only. It becomes visible to others if you ever share a Space."
+  },
+  "mode": {
+    "incomeDriven": {
+      "name": "Regular income",
+      "body": "For a household or personal budget with regular income. Periods run automatically from one payday to the next, and one-off receipts add to your free money.",
+      "examples": "Family budget, salary, stipend."
+    },
+    "budget": {
+      "name": "Budget",
+      "body": "For a goal or an event with a limit on money, a date, or both. Set the budget, record what you spend, and see whether you fit.",
+      "examples": "A trip, a renovation, an office purchase."
+    },
+    "flow": {
+      "name": "Flow",
+      "body": "For irregular income, or when you simply want to see spending ahead. Counts from the money you have now: how far it reaches and what is left.",
+      "examples": "Freelance, living on savings, open-ended planning."
+    }
+  },
+  "storage": {
+    "local": {
+      "name": "Local",
+      "body": "Stored on this device only. Fast, fully private, works without a network. It will not appear on another device and cannot be shared."
+    },
+    "cloud": {
+      "name": "Cloud",
+      "notYet": "Not available in this version yet."
+    }
+  },
+  "space": {
+    "createTitle": "New Space",
+    "firstTitle": "Create your first Space",
+    "firstBody": "A Space holds one budget. Separate ones keep separate things apart — a household, a trip, freelance work.",
+    "fieldTitle": "Name",
+    "titleHint": "Family budget",
+    "fieldMode": "Type",
+    "modeIsPermanent": "Chosen once. The three types compute money differently, so a Space keeps the one it was created with.",
+    "fieldCurrency": "Currency",
+    "currencyFreezes": "Can be changed until the first record is added.",
+    "currencyFrozen": "Frozen — this Space already has records.",
+    "fieldStorage": "Storage",
+    "fieldTimezone": "Timezone",
+    "fieldFeedOrder": "Order in the Feed",
+    "create": "Create Space",
+    "noneYet": "No Spaces yet.",
+    "archive": "Archive Space",
+    "archiveTitle": "Archive this Space?",
+    "archiveConfirm": "\"{title}\" disappears from the switcher. Its records stay on this device and nothing is deleted.",
+    "archiveBody": "Archiving hides the Space without deleting anything."
+  },
+  "spaceSettings": {
+    "title": "Space settings"
+  },
+  "feedOrder": {
+    "grouped": "By type",
+    "free": "Free"
+  },
+  "settings": {
+    "title": "Settings",
+    "display": "Display",
+    "theme": "Theme",
+    "feedDensity": "Feed density",
+    "language": "Language",
+    "data": "Data",
+    "spaces": "Spaces"
+  },
+  "dashboard": {
+    "freeMoney": "Free money",
+    "lasts": "Money lasts until",
+    "overspend": "Overspend: {amount}",
+    "currentMoney": "Money on hand",
+    "balanceSetOn": "set on {date}",
+    "cascade": "Cascade",
+    "baseRemainder": "Base remainder",
+    "baseRemainderHint": "After mandatory expenses only",
+    "netFree": "Net free money",
+    "netFreeHint": "After everything planned",
+    "notCovered": "Not covered",
+    "planned": "Planned",
+    "paid": "Paid",
+    "leftToPay": "Left to pay",
+    "incomeToday": "Today",
+    "incomeInDays": {
+      "one": "In {} day",
+      "other": "In {} days"
+    },
+    "noUpcomingIncome": "No income entered ahead."
+  },
+  "balance": {
+    "sheetTitle": "Set current balance",
+    "sheetBody": "The money you actually have right now. Expenses already paid on or before today are left out of the forecast so they are not counted twice.",
+    "fieldAmount": "Amount",
+    "excludedFromWalker": {
+      "one": "{} paid expense excluded",
+      "other": "{} paid expenses excluded"
+    }
+  },
+  "feed": {
+    "empty": "Nothing here yet.",
+    "today": "Today",
+    "currentMoney": "Money on hand",
+    "cutoff": "Money runs out",
+    "deleted": "Deleted \"{title}\"",
+    "addBefore": "Add on the day before",
+    "addAfter": "Add on the day after",
+    "duplicateBefore": "Duplicate to the day before",
+    "duplicateAfter": "Duplicate to the day after"
+  },
   "payment": {
-    "add": "Add payment",
-    "fieldTitle": "TITLE",
-    "fieldAmount": "AMOUNT",
+    "add": "Add expense",
+    "edit": "Edit expense",
+    "fieldTitle": "Title",
+    "fieldAmount": "Amount",
+    "fieldDate": "Date",
+    "fieldCategory": "Category",
+    "fieldType": "Type",
+    "fieldNotes": "Note",
+    "markPaid": "Already paid",
+    "togglePaid": "Paid",
+    "paid": "Paid",
+    "unpaid": "Planned",
+    "note": "Note",
     "mandatory": "Mandatory",
     "overdue": "Overdue",
-    "uncertain": "Uncertain"
+    "uncertain": "Uncertain",
+    "oneOff": "One-off",
+    "recurring": "Repeating",
+    "recurringPreview": "Takes {now} now, reserves {total} across {count} payments",
+    "dateOutOfRange": "That date is unusually far away. Saving it is allowed.",
+    "mandatoryConfirmTitle": "This is a mandatory payment",
+    "mandatoryConfirmBody": "Mandatory payments are real obligations. Continue?"
+  },
+  "expenseType": {
+    "mandatory": "Mandatory",
+    "variable": "Variable"
+  },
+  "recurrence": {
+    "monthly": "Monthly",
+    "weekly": "Weekly",
+    "indefinitely": "Indefinitely",
+    "times": {
+      "one": "{} time",
+      "other": "{} times"
+    }
+  },
+  "series": {
+    "title": "This payment repeats",
+    "body": "Which occurrences should the change apply to? Occurrences already marked paid are never changed.",
+    "thisOne": "Only this one",
+    "allFuture": "All future",
+    "wholeSeries": "Whole series"
+  },
+  "income": {
+    "add": "Add income",
+    "edit": "Edit income",
+    "fieldTitle": "Title",
+    "fieldAmount": "Amount",
+    "fieldDate": "Expected on",
+    "fieldNotes": "Note",
+    "amountOptional": "Leave empty if unknown",
+    "amountUnknown": "Amount unknown",
+    "amountRequired": "An amount is needed to mark this received.",
+    "markReceived": "Already received",
+    "received": "Received",
+    "expected": "Expected"
+  },
+  "category": {
+    "title": "Categories",
+    "add": "New category",
+    "edit": "Edit category",
+    "empty": "No categories yet.",
+    "none": "No category",
+    "fieldTitle": "Name",
+    "fieldColor": "Colour",
+    "fieldDefaultType": "Default type",
+    "titleFrozen": "The name is fixed: payments are already filed under it. Colour and type stay editable.",
+    "deleteTitle": "Delete this category?",
+    "deleteBody": "Payments filed under \"{title}\" keep its name, but it can no longer be chosen for new ones.",
+    "deleted": "Deleted \"{title}\""
+  },
+  "starterCategory": {
+    "rent": "Rent",
+    "loans": "Loans",
+    "utilities": "Utilities",
+    "internet": "Internet",
+    "flexible": "Flexible spending"
+  },
+  "calendar": {
+    "notYet": "The calendar arrives in a later version."
   },
   "coverage": {
     "covered": "Covered, with room to spare",
     "exact": "Covered exactly, nothing spare",
     "short": "Not covered before the next income"
-  },
-  "balance": {
-    "excludedFromWalker": {
-      "one": "{} paid expense excluded",
-      "other": "{} paid expenses excluded"
-    }
   },
   "decryption": {
     "title": "Your data cannot be opened",

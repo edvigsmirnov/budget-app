@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:budget_app/core/l10n/app_locales.dart';
 import 'package:budget_app/core/l10n/pseudo_asset_loader.dart';
 import 'package:budget_app/core/l10n/pseudolocalize.dart';
+import 'package:budget_app/core/settings/local_settings.dart';
+import 'package:budget_app/core/settings/settings_providers.dart';
 import 'package:budget_app/core/theme/sage_theme.dart';
 import 'package:budget_app/features/dev/token_gallery_page.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -27,11 +29,20 @@ class _FileAssetLoader extends AssetLoader {
 }
 
 void main() {
+  late LocalSettings settings;
+
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     // ensureInitialized reads the saved locale through shared_preferences.
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await EasyLocalization.ensureInitialized();
+  });
+
+  setUp(() async {
+    // A fresh store per test: the theme toggle writes through to it, and one
+    // test's last state must not become the next one's first.
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    settings = await LocalSettings.load();
   });
 
   Widget harness({
@@ -47,6 +58,7 @@ void main() {
       ignorePluralRules: false,
       assetLoader: const PseudoAssetLoader(base: _FileAssetLoader()),
       child: ProviderScope(
+        overrides: [localSettingsProvider.overrideWithValue(settings)],
         child: Builder(
           builder: (BuildContext context) => MaterialApp(
             theme: SageTheme.light,
@@ -91,7 +103,7 @@ void main() {
   ) async {
     await pump(tester, harness(locale: AppLocales.pseudo));
     // The long-string pass: every visible string is padded and bracketed.
-    expect(find.text(pseudolocalize('Add payment')), findsOneWidget);
+    expect(find.text(pseudolocalize('Add expense')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -119,15 +131,15 @@ void main() {
     WidgetTester tester,
   ) async {
     await pump(tester, harness());
-    expect(find.text('Add payment'), findsOneWidget);
+    expect(find.text('Add expense'), findsOneWidget);
 
     await tester.tap(find.text('en'));
     await tester.pumpAndSettle();
-    expect(find.text('Добавить платёж'), findsOneWidget);
+    expect(find.text('Добавить расход'), findsOneWidget);
 
     await tester.tap(find.text('ru'));
     await tester.pumpAndSettle();
-    expect(find.text(pseudolocalize('Add payment')), findsOneWidget);
+    expect(find.text(pseudolocalize('Add expense')), findsOneWidget);
   });
 
   testWidgets('plurals resolve per locale', (WidgetTester tester) async {

@@ -1,0 +1,117 @@
+import 'package:budget_app/core/db/app_database.dart';
+import 'package:budget_app/core/db/repositories/budget_period_repository.dart';
+import 'package:budget_app/core/db/repositories/category_repository.dart';
+import 'package:budget_app/core/db/repositories/income_repository.dart';
+import 'package:budget_app/core/db/repositories/payment_repository.dart';
+import 'package:budget_app/core/db/repositories/space_repository.dart';
+import 'package:budget_app/core/settings/settings_providers.dart';
+import 'package:budget_app/core/time/space_clock.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Set once the database is open, by the startup path in main.dart.
+final Provider<AppDatabase> databaseProvider = Provider<AppDatabase>(
+  (Ref ref) => throw StateError('databaseProvider was not overridden'),
+);
+
+/// Every repository.
+///
+/// The clock here is UTC on purpose. Repositories ask it for one thing only —
+/// `nowUtc`, the stamp on every write — and that instant is the same in every
+/// zone. "Today" is a different question, belongs to a Space, and is answered
+/// by [spaceClockProvider]; keeping the two apart is also what stops the
+/// repository graph from depending on which Space is open.
+class Repositories {
+  Repositories({
+    required this.db,
+    required SpaceClock clock,
+    required String userId,
+  }) : spaces = SpaceRepository(db: db, clock: clock),
+       payments = PaymentRepository(db: db, clock: clock, userId: userId),
+       incomes = IncomeRepository(db: db, clock: clock, userId: userId),
+       incomeRules = IncomeRuleRepository(db: db, clock: clock, userId: userId),
+       periods = BudgetPeriodRepository(db: db, clock: clock, userId: userId) {
+    categories = CategoryRepository(
+      db: db,
+      clock: clock,
+      userId: userId,
+      payments: payments,
+    );
+  }
+
+  final AppDatabase db;
+  final SpaceRepository spaces;
+  final PaymentRepository payments;
+  final IncomeRepository incomes;
+  final IncomeRuleRepository incomeRules;
+  final BudgetPeriodRepository periods;
+  late final CategoryRepository categories;
+}
+
+final Provider<Repositories> repositoriesProvider = Provider<Repositories>(
+  (Ref ref) => Repositories(
+    db: ref.watch(databaseProvider),
+    clock: SpaceClock(timezone: 'UTC'),
+    userId: ref.watch(userIdProvider),
+  ),
+);
+
+/// Every Space on this device, live.
+final StreamProvider<List<Space>> spaceListProvider =
+    StreamProvider<List<Space>>(
+      (Ref ref) => ref.watch(repositoriesProvider).spaces.watchAll(),
+    );
+
+/// Which Space to open. Persisted so a relaunch lands where the user left off.
+class CurrentSpaceIdController extends Notifier<String?> {
+  @override
+  String? build() => ref.watch(localSettingsProvider).currentSpaceId;
+
+  Future<void> select(String? spaceId) async {
+    await ref.read(localSettingsProvider).setCurrentSpaceId(spaceId);
+    state = spaceId;
+  }
+}
+
+final NotifierProvider<CurrentSpaceIdController, String?>
+currentSpaceIdProvider = NotifierProvider<CurrentSpaceIdController, String?>(
+  CurrentSpaceIdController.new,
+);
+
+/// The stored selection resolved against the Spaces that actually exist. Falls
+/// back to the first Space when the stored id is gone, and to null when there
+/// are none — which is what sends the user to onboarding.
+final Provider<AsyncValue<Space?>> resolvedSpaceProvider =
+    Provider<AsyncValue<Space?>>((Ref ref) {
+      final String? selected = ref.watch(currentSpaceIdProvider);
+      return ref.watch(spaceListProvider).whenData((List<Space> spaces) {
+        if (spaces.isEmpty) return null;
+        for (final Space space in spaces) {
+          if (space.id == selected) return space;
+        }
+        return spaces.first;
+      });
+    });
+
+/// The Space the app is showing, or null before one exists.
+///
+/// Deliberately a root-level provider rather than something scoped per
+/// subtree: a scoped override reaches only the widgets that read it directly,
+/// while every provider derived from it would still resolve against the root —
+/// and silently see no Space at all.
+final Provider<Space?> currentSpaceProvider = Provider<Space?>(
+  (Ref ref) => ref.watch(resolvedSpaceProvider).value,
+);
+
+/// One definition of "today" per Space (plan section 2, invariant 7). Falls
+/// back to UTC before a Space exists.
+final Provider<SpaceClock> spaceClockProvider = Provider<SpaceClock>((Ref ref) {
+  final Space? space = ref.watch(currentSpaceProvider);
+  return SpaceClock(timezone: space?.timezone ?? 'UTC');
+});
+
+/// The open Space. Throws where there is none, which is a routing mistake
+/// rather than a state a screen has to handle.
+extension CurrentSpaceX on WidgetRef {
+  Space get space =>
+      watch(currentSpaceProvider) ?? (throw StateError('no Space is open'));
+}

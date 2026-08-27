@@ -25,13 +25,36 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   /// moment the Space switches feed mode (plan G2) — so id breaks ties and
   /// keeps the order stable across rebuilds.
   Future<List<Payment>> inSpace(String spaceId) =>
-      (selectAliveInSpace(spaceId)
-            ..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
-              ($PaymentsTable t) => OrderingTerm(expression: t.dueDate),
-              ($PaymentsTable t) => OrderingTerm(expression: t.sortOrder),
-              ($PaymentsTable t) => OrderingTerm(expression: t.id),
-            ]))
-          .get();
+      _selectInSpace(spaceId).get();
+
+  /// The same list as [inSpace], re-emitted on every change. The Feed and the
+  /// Dashboard both read this so a write anywhere refreshes both.
+  Stream<List<Payment>> watchInSpace(String spaceId) =>
+      _selectInSpace(spaceId).watch();
+
+  /// The window the Feed opens with: three months either side of [around]
+  /// (spec 4.5). Rows outside it load only when the user scrolls that far.
+  Stream<List<Payment>> watchAround(
+    String spaceId,
+    CalendarDate from,
+    CalendarDate to,
+  ) =>
+      (_selectInSpace(spaceId)..where(
+            ($PaymentsTable t) =>
+                t.dueDate.isBiggerOrEqualValue(from.toIso()) &
+                t.dueDate.isSmallerOrEqualValue(to.toIso()),
+          ))
+          .watch();
+
+  SimpleSelectStatement<$PaymentsTable, Payment> _selectInSpace(
+    String spaceId,
+  ) =>
+      selectAliveInSpace(spaceId)
+        ..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
+          ($PaymentsTable t) => OrderingTerm(expression: t.dueDate),
+          ($PaymentsTable t) => OrderingTerm(expression: t.sortOrder),
+          ($PaymentsTable t) => OrderingTerm(expression: t.id),
+        ]);
 
   Future<List<Payment>> onDay(String spaceId, CalendarDate day) =>
       (selectAliveInSpace(spaceId)
@@ -117,6 +140,146 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
 
   Future<int> setPaid(String id, {required bool isPaid}) =>
       update(id, isPaid: Value<bool>(isPaid));
+
+  /// Materialises a repeating payment as one row per occurrence, sharing a
+  /// `group_recurring_id` (spec 6.3).
+  ///
+  /// Physical rows, not a rule evaluated at read time: it is what lets one
+  /// month be corrected — a final instalment that is a little smaller — without
+  /// rebuilding the series.
+  Future<String> createSeries({
+    required String spaceId,
+    required String title,
+    required Decimal amount,
+    required List<CalendarDate> dates,
+    required ExpenseType expenseType,
+    String? categoryId,
+    String? notes,
+  }) async {
+    final String groupId = SyncedRepository.newId();
+    final ({String author, DateTime editedAt}) s = stamp();
+
+    await db.batch((Batch b) {
+      b.insertAll(db.payments, <PaymentsCompanion>[
+        for (final CalendarDate date in dates)
+          PaymentsCompanion.insert(
+            id: SyncedRepository.newId(),
+            spaceId: spaceId,
+            title: title.trim(),
+            amount: amount,
+            dueDate: date,
+            expenseType: expenseType,
+            categoryId: Value<String?>(categoryId),
+            groupRecurringId: Value<String>(groupId),
+            notes: Value<String?>(notes),
+            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+            lastModifiedBy: Value<String?>(s.author),
+            clientEditedAt: s.editedAt,
+            createdAt: s.editedAt,
+          ),
+      ]);
+    });
+
+    return groupId;
+  }
+
+  /// The "all future" branch of the series edit dialog (spec 6.3).
+  ///
+  /// Rows already marked paid are left alone: they record what happened, and
+  /// a change to the plan does not rewrite history.
+  Future<int> updateSeriesFrom(
+    String groupRecurringId,
+    CalendarDate from, {
+    Value<String> title = const Value<String>.absent(),
+    Value<Decimal> amount = const Value<Decimal>.absent(),
+    Value<ExpenseType> expenseType = const Value<ExpenseType>.absent(),
+    Value<String?> categoryId = const Value<String?>.absent(),
+    Value<String?> notes = const Value<String?>.absent(),
+  }) => _writeSeries(
+    groupRecurringId,
+    from: from,
+    title: title,
+    amount: amount,
+    expenseType: expenseType,
+    categoryId: categoryId,
+    notes: notes,
+  );
+
+  /// The "whole series" branch: every occurrence, past ones included, except
+  /// those already paid.
+  Future<int> updateWholeSeries(
+    String groupRecurringId, {
+    Value<String> title = const Value<String>.absent(),
+    Value<Decimal> amount = const Value<Decimal>.absent(),
+    Value<ExpenseType> expenseType = const Value<ExpenseType>.absent(),
+    Value<String?> categoryId = const Value<String?>.absent(),
+    Value<String?> notes = const Value<String?>.absent(),
+  }) => _writeSeries(
+    groupRecurringId,
+    title: title,
+    amount: amount,
+    expenseType: expenseType,
+    categoryId: categoryId,
+    notes: notes,
+  );
+
+  /// Soft-deletes a whole series, or its future half.
+  Future<int> deleteSeries(String groupRecurringId, {CalendarDate? from}) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(db.payments)..where(
+          ($PaymentsTable t) => _seriesFilter(t, groupRecurringId, from),
+        ))
+        .write(
+          PaymentsCompanion(
+            isDeleted: const Value<bool>(true),
+            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+            lastModifiedBy: Value<String?>(s.author),
+            clientEditedAt: Value<DateTime>(s.editedAt),
+          ),
+        );
+  }
+
+  Future<int> _writeSeries(
+    String groupRecurringId, {
+    CalendarDate? from,
+    Value<String> title = const Value<String>.absent(),
+    Value<Decimal> amount = const Value<Decimal>.absent(),
+    Value<ExpenseType> expenseType = const Value<ExpenseType>.absent(),
+    Value<String?> categoryId = const Value<String?>.absent(),
+    Value<String?> notes = const Value<String?>.absent(),
+  }) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(db.payments)..where(
+          ($PaymentsTable t) =>
+              _seriesFilter(t, groupRecurringId, from) & t.isPaid.equals(false),
+        ))
+        .write(
+          PaymentsCompanion(
+            title: title.present
+                ? Value<String>(title.value.trim())
+                : const Value<String>.absent(),
+            amount: amount,
+            expenseType: expenseType,
+            categoryId: categoryId,
+            notes: notes,
+            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+            lastModifiedBy: Value<String?>(s.author),
+            clientEditedAt: Value<DateTime>(s.editedAt),
+          ),
+        );
+  }
+
+  Expression<bool> _seriesFilter(
+    $PaymentsTable t,
+    String groupRecurringId,
+    CalendarDate? from,
+  ) {
+    final Expression<bool> base =
+        t.groupRecurringId.equals(groupRecurringId) & t.isDeleted.equals(false);
+    return from == null
+        ? base
+        : base & t.dueDate.isBiggerOrEqualValue(from.toIso());
+  }
 
   /// One gap past the last row of that day.
   Future<int> nextSortOrder(String spaceId, CalendarDate day) async {
