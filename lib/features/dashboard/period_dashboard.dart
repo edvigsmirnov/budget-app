@@ -142,6 +142,33 @@ class _PeriodBody extends ConsumerWidget {
           income: ledger.nearestIncome,
           today: ledger.today,
           money: money,
+          onTap: ledger.nearestIncome == null
+              ? null
+              : () =>
+                    openIncomeForm(context, incomeId: ledger.nearestIncome!.id),
+        ),
+        const SizedBox(height: SageSpace.md),
+        // The salary is what the whole cycle rests on, and its schedule lived
+        // only under Space settings until now.
+        SageCard(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (BuildContext _) => const IncomeRulesPage(),
+            ),
+          ),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.repeat, size: 20, color: context.sage.inkLabel),
+              const SizedBox(width: SageSpace.md),
+              Expanded(
+                child: Text(
+                  tr('income.regularTitle'),
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: context.sage.inkLabel),
+            ],
+          ),
         ),
       ],
     );

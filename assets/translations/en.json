@@ -109,14 +109,14 @@
     "fullyOfflineHint": "No feature reaches the network while this is on."
   },
   "dashboard": {
-    "freeMoney": "Free money",
-    "lasts": "Money lasts until",
+    "freeMoney": "Left to spend",
+    "lasts": "Lasts until",
     "overspend": "Overspend: {amount}",
-    "currentMoney": "Money on hand",
+    "currentMoney": "Balance",
     "balanceSetOn": "set on {date}",
     "cascade": "Cascade",
     "baseRemainder": "Base remainder",
-    "notCovered": "Not covered",
+    "notCovered": "Doesn't cover it",
     "planned": "Planned",
     "paid": "Paid",
     "leftToPay": "Left to pay",
@@ -148,7 +148,7 @@
   "feed": {
     "empty": "Nothing here yet.",
     "today": "Today",
-    "currentMoney": "Money on hand",
+    "currentMoney": "Balance",
     "cutoff": "Money runs out",
     "deleted": "Deleted \"{title}\"",
     "addBefore": "Add on the day before",

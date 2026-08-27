@@ -14,6 +14,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/incomes/income_scope_dialog.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
@@ -316,6 +317,22 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// Opens the rule this occurrence was materialised from.
+  Future<void> _openRule() async {
+    final String? ruleId = _existing?.recurrenceRuleId;
+    if (ruleId == null) return;
+
+    final List<IncomeRecurrenceRule> rules = await ref
+        .read(repositoriesProvider)
+        .incomeRules
+        .inSpace(ref.read(currentSpaceProvider)!.id);
+    final IncomeRecurrenceRule? rule = rules
+        .where((IncomeRecurrenceRule r) => r.id == ruleId)
+        .firstOrNull;
+    if (rule == null || !mounted) return;
+    await openIncomeRuleForm(context, rule: rule);
+  }
+
   Future<void> _pickDate({required bool actual}) async {
     final CalendarDate current =
         (actual ? _actualDate : _date) ?? ref.read(spaceClockProvider).today();
@@ -375,10 +392,15 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
           padding: const EdgeInsets.all(SageSpace.formGutter),
           children: <Widget>[
             if (_isFrozen) const FreezeNotice(),
+            // This screen edits one month of a regular income; the schedule and
+            // the standing amount live on the rule behind it. The link is here
+            // because this is where someone looking at their salary already
+            // is (spec 5.4).
             if (partOfSeries)
               Padding(
                 padding: const EdgeInsets.only(bottom: SageSpace.md),
                 child: SageCard(
+                  onTap: _openRule,
                   child: Row(
                     children: <Widget>[
                       Icon(
@@ -388,10 +410,26 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                       ),
                       const SizedBox(width: SageSpace.sm),
                       Expanded(
-                        child: Text(
-                          tr('income.partOfSeries'),
-                          style: Theme.of(context).textTheme.bodySmall,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              tr('income.partOfSeries'),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              tr('income.editRule'),
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(color: context.sage.accentStrong),
+                            ),
+                          ],
                         ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: context.sage.inkLabel,
                       ),
                     ],
                   ),

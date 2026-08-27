@@ -7,9 +7,11 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/projection_chart.dart';
+import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// The dashboard of a Flow Space (spec 4.6).
@@ -90,8 +92,13 @@ class _Body extends ConsumerWidget {
               child: _FigureTile(
                 value: money.format(ledger.available),
                 label: tr('dashboard.currentMoney'),
+                // When the figure was last true, so a stale balance shows as
+                // stale (spec 4.6). It belongs on the figure rather than in a
+                // block of its own underneath, which said the same number
+                // twice in a row.
+                caption: _balanceCaption(space, ledger, dates),
                 // The balance is Flow's one hand-entered number, so the tile
-                // showing it is also where it is edited (spec 4.6).
+                // showing it is also where it is edited.
                 onTap: () =>
                     editBalance(context, ref, space: space, money: money),
               ),
@@ -105,15 +112,21 @@ class _Body extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: SageSpace.sm),
-        BalanceFooter(
-          space: space,
-          available: ledger.available,
-          excludedCount: ledger.excludedCount,
+        const SizedBox(height: SageSpace.md),
+        NearestIncomeCard(
+          income: ledger.nearestIncome,
+          today: ledger.today,
           money: money,
-          dates: dates,
+          onTap: ledger.nearestIncome == null
+              ? null
+              : () =>
+                    openIncomeForm(context, incomeId: ledger.nearestIncome!.id),
         ),
         const SizedBox(height: SageSpace.md),
+        // Below what the design draws, because the spec asks for both here and
+        // the design's Flow frame shows neither: the cascade answers "does it
+        // cover the obligations" (spec 4.6) and the totals what is still owed
+        // (spec 4.4). Neither is the first question Flow is opened for.
         CascadeCard(
           available: ledger.available,
           baseRemainder: ledger.baseRemainder,
@@ -127,15 +140,30 @@ class _Body extends ConsumerWidget {
           remaining: ledger.totalRemaining,
           money: money,
         ),
-        const SizedBox(height: SageSpace.md),
-        NearestIncomeCard(
-          income: ledger.nearestIncome,
-          today: ledger.today,
-          money: money,
-        ),
       ],
     );
   }
+}
+
+/// When the hand-entered balance was last true, and how many records the walk
+/// left out (spec 4.6).
+String? _balanceCaption(Space space, FlowLedger ledger, DateLabels dates) {
+  final DateTime? setAt = space.manualBalanceUpdatedAt;
+  return <String>[
+    if (setAt != null)
+      tr(
+        'dashboard.balanceSetOn',
+        namedArgs: <String, String>{
+          'date': dates.short(CalendarDate.fromDateTime(setAt.toUtc())),
+        },
+      ),
+    if (ledger.excludedCount > 0)
+      plural('balance.excludedFromWalker', ledger.excludedCount),
+  ].join(' · ').ifEmptyNull();
+}
+
+extension on String {
+  String? ifEmptyNull() => isEmpty ? null : this;
 }
 
 /// One figure on a card, amount over label (design section 4.6).
@@ -143,17 +171,29 @@ class _Body extends ConsumerWidget {
 /// The inverse of the label-first blocks elsewhere: these two sit under the
 /// projection as its readings, so the number leads and the word explains it.
 class _FigureTile extends StatelessWidget {
-  const _FigureTile({required this.value, required this.label, this.onTap});
+  const _FigureTile({
+    required this.value,
+    required this.label,
+    this.caption,
+    this.onTap,
+  });
 
   final String value;
   final String label;
+
+  /// A third line, for what qualifies the figure rather than names it.
+  final String? caption;
+
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
     return SageCard(
-      padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: SageSpace.sm,
+        vertical: SageSpace.md,
+      ),
       onTap: onTap,
       child: Column(
         children: <Widget>[
@@ -170,6 +210,14 @@ class _FigureTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: text.bodySmall?.copyWith(color: context.sage.inkLabel),
           ),
+          if (caption != null)
+            Text(
+              caption!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: text.labelSmall?.copyWith(color: context.sage.inkLabel),
+            ),
         ],
       ),
     );

@@ -114,6 +114,9 @@ class MainFigure extends StatelessWidget {
                 style: text.bodySmall?.copyWith(color: sage.inkLabel),
               ),
             ],
+            // How far past the money the plan goes. The date says when it runs
+            // out; this says by how much, which is the figure you need to know
+            // what to move.
             if (short && overspend < Decimal.zero) ...<Widget>[
               const SizedBox(height: SageSpace.xs),
               Text(
@@ -331,12 +334,17 @@ class NearestIncomeCard extends StatelessWidget {
     required this.income,
     required this.today,
     required this.money,
+    this.onTap,
     super.key,
   });
 
   final Income? income;
   final CalendarDate today;
   final MoneyFormat money;
+
+  /// Opens the income this card names. The salary is the figure the whole
+  /// cycle rests on, and until now the only way to it was the Feed.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -355,6 +363,7 @@ class NearestIncomeCard extends StatelessWidget {
 
     return SageCard(
       color: sage.accentTint,
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
