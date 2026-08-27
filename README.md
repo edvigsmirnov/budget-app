@@ -47,4 +47,4 @@ symlinks, and every build fails without it.
 
 ## License
 
-[MIT](LICENSE) © 2026 Edvig Smirnov
+Source-Available Non-Commercial License. See [LICENSE](LICENSE) for full terms.
