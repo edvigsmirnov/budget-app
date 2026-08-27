@@ -513,7 +513,7 @@ class _TotalBlock extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
-      Text(label.toUpperCase(), style: Theme.of(context).textTheme.labelSmall),
+      Text(label, style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: SageSpace.xs),
       AnimatedMoney(value: value, format: money.format),
     ],

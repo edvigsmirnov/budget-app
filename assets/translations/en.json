@@ -116,9 +116,6 @@
     "balanceSetOn": "set on {date}",
     "cascade": "Cascade",
     "baseRemainder": "Base remainder",
-    "baseRemainderHint": "After mandatory expenses only",
-    "netFree": "Net free money",
-    "netFreeHint": "After everything planned",
     "notCovered": "Not covered",
     "planned": "Planned",
     "paid": "Paid",
@@ -133,7 +130,9 @@
       "one": "Next {} day",
       "other": "Next {} days"
     },
-    "averagePerDay": "{amount}/day planned"
+    "averagePerDay": "{amount}/day planned",
+    "cascadeHint": "Base remainder is what is left after the mandatory payments alone — the lower bound. Free money above is after the variable ones too.",
+    "nearestIncome": "Nearest income"
   },
   "balance": {
     "sheetTitle": "Set current balance",

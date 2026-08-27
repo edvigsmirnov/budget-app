@@ -112,7 +112,7 @@ class _PeriodBody extends ConsumerWidget {
         if (!ledger.isComputable)
           _FloatingAnchorCard(ledger: ledger, money: money)
         else ...<Widget>[
-          MainFigureCard(
+          MainFigure(
             label: tr('dashboard.freeMoney'),
             amount: ledger.freeCash,
             coverage: ledger.coverage,
@@ -124,10 +124,9 @@ class _PeriodBody extends ConsumerWidget {
           ),
           const SizedBox(height: SageSpace.md),
           CascadeCard(
+            available: ledger.anchorAmount!,
             baseRemainder: ledger.baseRemainder,
-            netFree: ledger.freeCash,
             baseCoverage: ledger.cascade!.mandatory.coverage,
-            netCoverage: ledger.cascade!.all.coverage,
             money: money,
           ),
         ],

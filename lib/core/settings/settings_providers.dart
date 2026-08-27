@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 
@@ -11,6 +12,14 @@ final Provider<LocalSettings> localSettingsProvider = Provider<LocalSettings>(
 final Provider<String> userIdProvider = Provider<String>(
   (Ref ref) => ref.watch(localSettingsProvider).userId,
 );
+
+/// The first letter of the nickname, for the header avatar. Null when the
+/// onboarding step was skipped — no letter is better than a guessed one.
+final Provider<String?> profileInitialProvider = Provider<String?>((Ref ref) {
+  final String? nickname = ref.watch(localSettingsProvider).nickname?.trim();
+  if (nickname == null || nickname.isEmpty) return null;
+  return nickname.characters.first.toUpperCase();
+});
 
 /// Feed row height and detail level (spec 4.5). Device-local, like the theme:
 /// two members of a shared Space choose independently.

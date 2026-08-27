@@ -51,10 +51,7 @@ class FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: SageSpace.sm),
-    child: Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall,
-    ),
+    child: Text(text, style: Theme.of(context).textTheme.labelSmall),
   );
 }
 
@@ -221,7 +218,7 @@ class StatColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(label.toUpperCase(), style: text.labelSmall),
+        Text(label, style: text.labelMedium),
         const SizedBox(height: SageSpace.xs),
         Text(
           value,
@@ -231,6 +228,59 @@ class StatColumn extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A label and its figure on one line, label left and value right.
+///
+/// The dashboard's totals read as a short list rather than three cramped
+/// columns: with a real device's type size, side-by-side columns wrap and the
+/// numbers stop lining up.
+class StatRow extends StatelessWidget {
+  const StatRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.emphasised = false,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  /// Draws the value at title weight, for the one figure a card is about.
+  final bool emphasised;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: SageSpace.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              label,
+              style: text.bodyMedium?.copyWith(
+                color: context.sage.inkSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: SageSpace.md),
+          Text(
+            value,
+            style: (emphasised ? text.titleMedium : text.bodyLarge)?.copyWith(
+              color: valueColor ?? context.sage.ink,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

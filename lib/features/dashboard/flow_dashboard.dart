@@ -57,7 +57,7 @@ class _Body extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(SageSpace.gutter),
       children: <Widget>[
-        MainFigureCard(
+        MainFigure(
           label: tr('dashboard.freeMoney'),
           amount: ledger.freeCash,
           coverage: ledger.coverage,
@@ -67,7 +67,11 @@ class _Body extends ConsumerWidget {
           dates: dates,
           today: ledger.today,
           onTap: () => editBalance(context, ref, space: space, money: money),
-          footer: BalanceFooter(
+        ),
+        const SizedBox(height: SageSpace.md),
+        SageCard(
+          onTap: () => editBalance(context, ref, space: space, money: money),
+          child: BalanceFooter(
             space: space,
             available: ledger.available,
             excludedCount: ledger.excludedCount,
@@ -84,10 +88,9 @@ class _Body extends ConsumerWidget {
         ),
         const SizedBox(height: SageSpace.md),
         CascadeCard(
+          available: ledger.available,
           baseRemainder: ledger.baseRemainder,
-          netFree: ledger.freeCash,
           baseCoverage: ledger.cascade.mandatory.coverage,
-          netCoverage: ledger.cascade.all.coverage,
           money: money,
         ),
         const SizedBox(height: SageSpace.md),

@@ -14,12 +14,16 @@ import 'package:sielto/domain/value/calendar_date.dart';
 /// They take plain values rather than a mode's ledger type, which is what lets
 /// Flow and Regular income render the same cards from different arithmetic.
 
-/// The hero figure.
+/// The hero figure (design section 2).
+///
+/// Centred on the page ground rather than inside a card: it is the answer the
+/// screen exists to give, and a card around it makes it read as one item in a
+/// list of equals.
 ///
 /// While everything is covered this is a sum. Once it is not, the useful
 /// answer is a date — how far the money reaches — and the figure turns red.
-class MainFigureCard extends StatelessWidget {
-  const MainFigureCard({
+class MainFigure extends StatelessWidget {
+  const MainFigure({
     required this.label,
     required this.amount,
     required this.coverage,
@@ -28,7 +32,6 @@ class MainFigureCard extends StatelessWidget {
     required this.lastCoveredDay,
     required this.dates,
     required this.today,
-    this.footer,
     this.onTap,
     super.key,
   });
@@ -48,9 +51,6 @@ class MainFigureCard extends StatelessWidget {
   final DateLabels dates;
   final CalendarDate today;
 
-  /// An extra block under the figure — Flow puts its balance snapshot here.
-  final Widget? footer;
-
   final VoidCallback? onTap;
 
   @override
@@ -59,102 +59,147 @@ class MainFigureCard extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
     final bool short = amount == null;
 
-    return SageCard(
-      padding: const EdgeInsets.all(SageSpace.lg),
+    return InkWell(
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Text(
-                short && lastCoveredDay != null ? tr('dashboard.lasts') : label,
-                style: text.labelSmall,
-              ),
-              if (coverage != null) ...<Widget>[
-                const SizedBox(width: SageSpace.sm),
-                CoverageDot(coverage!),
-              ],
-            ],
-          ),
-          const SizedBox(height: SageSpace.sm),
-          Text(
-            switch ((amount, lastCoveredDay)) {
-              (final Decimal value, _) => money.format(value),
-              (null, final CalendarDate day) => dates.dayMonth(
-                day,
-                reference: today,
-              ),
-              (null, null) => money.format(overspend),
-            },
-            style: text.displaySmall?.copyWith(
-              color: short ? sage.danger : sage.ink,
-            ),
-          ),
-          if (short && overspend < Decimal.zero) ...<Widget>[
-            const SizedBox(height: SageSpace.xs),
+      borderRadius: BorderRadius.circular(SageRadius.card),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+        child: Column(
+          children: <Widget>[
             Text(
-              tr(
-                'dashboard.overspend',
-                namedArgs: <String, String>{'amount': money.format(-overspend)},
-              ),
-              style: text.bodySmall?.copyWith(color: sage.danger),
+              short && lastCoveredDay != null ? tr('dashboard.lasts') : label,
+              textAlign: TextAlign.center,
+              style: text.bodyMedium?.copyWith(color: sage.inkLabel),
             ),
+            const SizedBox(height: SageSpace.xs),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Flexible(
+                  child: Text(
+                    switch ((amount, lastCoveredDay)) {
+                      (final Decimal value, _) => money.format(value),
+                      (null, final CalendarDate day) => dates.dayMonth(
+                        day,
+                        reference: today,
+                      ),
+                      (null, null) => money.format(overspend),
+                    },
+                    textAlign: TextAlign.center,
+                    style: text.displaySmall?.copyWith(
+                      color: short ? sage.danger : sage.ink,
+                    ),
+                  ),
+                ),
+                // Beside the figure, not beside the label: the dot qualifies
+                // the number it sits next to.
+                if (coverage != null) ...<Widget>[
+                  const SizedBox(width: SageSpace.sm),
+                  CoverageDot(coverage!),
+                ],
+              ],
+            ),
+            if (short && overspend < Decimal.zero) ...<Widget>[
+              const SizedBox(height: SageSpace.xs),
+              Text(
+                tr(
+                  'dashboard.overspend',
+                  namedArgs: <String, String>{
+                    'amount': money.format(-overspend),
+                  },
+                ),
+                textAlign: TextAlign.center,
+                style: text.bodySmall?.copyWith(color: sage.danger),
+              ),
+            ],
           ],
-          if (footer != null) ...<Widget>[
-            const SizedBox(height: SageSpace.md),
-            const Hairline(),
-            const SizedBox(height: SageSpace.md),
-            footer!,
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
 /// Mandatory first, then everything: two answers from one walk (spec 4.4).
-class CascadeCard extends StatelessWidget {
+///
+/// Only the base remainder appears here. The net figure is the hero above, and
+/// printing it twice on one screen invites the reader to look for a difference
+/// that is not there.
+class CascadeCard extends StatefulWidget {
   const CascadeCard({
+    required this.available,
     required this.baseRemainder,
-    required this.netFree,
     required this.baseCoverage,
-    required this.netCoverage,
     required this.money,
     super.key,
   });
 
+  /// What the walk started from, so the bar has something to be a share of.
+  final Decimal available;
+
   final Decimal? baseRemainder;
-  final Decimal? netFree;
   final Coverage baseCoverage;
-  final Coverage netCoverage;
   final MoneyFormat money;
 
   @override
+  State<CascadeCard> createState() => _CascadeCardState();
+}
+
+class _CascadeCardState extends State<CascadeCard> {
+  /// Open on first sight: the cascade is the one figure on this screen whose
+  /// name does not explain itself.
+  bool _explained = true;
+
+  @override
   Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
+    final Decimal? remainder = widget.baseRemainder;
+
     return SageCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(tr('dashboard.cascade'), style: text.titleSmall),
-          const SizedBox(height: SageSpace.md),
-          _CascadeRow(
-            label: tr('dashboard.baseRemainder'),
-            hint: tr('dashboard.baseRemainderHint'),
-            value: baseRemainder == null
-                ? tr('dashboard.notCovered')
-                : money.format(baseRemainder!),
-            coverage: baseCoverage,
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(tr('dashboard.cascade'), style: text.titleSmall),
+              ),
+              _HelpToggle(
+                open: _explained,
+                onTap: () => setState(() => _explained = !_explained),
+              ),
+            ],
           ),
+          if (_explained) ...<Widget>[
+            const SizedBox(height: SageSpace.md),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(SageSpace.md),
+              decoration: BoxDecoration(
+                color: sage.accentTint,
+                borderRadius: BorderRadius.circular(SageRadius.button),
+              ),
+              child: Text(
+                tr('dashboard.cascadeHint'),
+                style: text.bodySmall?.copyWith(color: sage.inkSecondary),
+              ),
+            ),
+          ],
           const SizedBox(height: SageSpace.md),
-          _CascadeRow(
-            label: tr('dashboard.netFree'),
-            hint: tr('dashboard.netFreeHint'),
-            value: netFree == null
+          StatRow(
+            label: tr('dashboard.baseRemainder'),
+            value: remainder == null
                 ? tr('dashboard.notCovered')
-                : money.format(netFree!),
-            coverage: netCoverage,
+                : widget.money.format(remainder),
+            valueColor: CoverageDot.colorOf(context, widget.baseCoverage),
+            emphasised: true,
+          ),
+          const SizedBox(height: SageSpace.sm),
+          _RemainderBar(
+            available: widget.available,
+            remainder: remainder,
+            coverage: widget.baseCoverage,
           ),
         ],
       ),
@@ -162,42 +207,72 @@ class CascadeCard extends StatelessWidget {
   }
 }
 
-class _CascadeRow extends StatelessWidget {
-  const _CascadeRow({
-    required this.label,
-    required this.hint,
-    required this.value,
+/// The "?" that opens the explanation.
+class _HelpToggle extends StatelessWidget {
+  const _HelpToggle({required this.open, required this.onTap});
+
+  final bool open;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 24,
+        height: 24,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: open ? sage.accentTintAlt : Colors.transparent,
+          border: Border.all(color: sage.border),
+        ),
+        child: Text(
+          '?',
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(color: sage.inkLabel),
+        ),
+      ),
+    );
+  }
+}
+
+/// How much of the money survives the mandatory payments.
+///
+/// The share is what the base remainder means, so it is drawn rather than left
+/// for the reader to divide two numbers in their head.
+class _RemainderBar extends StatelessWidget {
+  const _RemainderBar({
+    required this.available,
+    required this.remainder,
     required this.coverage,
   });
 
-  final String label;
-  final String hint;
-  final String value;
+  final Decimal available;
+  final Decimal? remainder;
   final Coverage coverage;
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(label, style: text.bodyLarge),
-              Text(hint, style: text.bodySmall),
-            ],
-          ),
+    final SageColors sage = context.sage;
+    // Nothing survived, or there was nothing to start with: an empty bar is
+    // the honest drawing of both.
+    final double share = (remainder == null || available <= Decimal.zero)
+        ? 0
+        : (remainder!.toDouble() / available.toDouble()).clamp(0.0, 1.0);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(SageRadius.pill),
+      child: LinearProgressIndicator(
+        value: share,
+        minHeight: 6,
+        backgroundColor: sage.accentTintAlt,
+        valueColor: AlwaysStoppedAnimation<Color>(
+          CoverageDot.colorOf(context, coverage),
         ),
-        const SizedBox(width: SageSpace.md),
-        Text(
-          value,
-          style: text.titleSmall?.copyWith(
-            color: CoverageDot.colorOf(context, coverage),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -219,25 +294,13 @@ class TotalsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SageCard(
-    child: Row(
+    child: Column(
       children: <Widget>[
-        Expanded(
-          child: StatColumn(
-            label: tr('dashboard.planned'),
-            value: money.format(planned),
-          ),
-        ),
-        Expanded(
-          child: StatColumn(
-            label: tr('dashboard.paid'),
-            value: money.format(paid),
-          ),
-        ),
-        Expanded(
-          child: StatColumn(
-            label: tr('dashboard.leftToPay'),
-            value: money.format(remaining),
-          ),
+        StatRow(label: tr('dashboard.planned'), value: money.format(planned)),
+        StatRow(label: tr('dashboard.paid'), value: money.format(paid)),
+        StatRow(
+          label: tr('dashboard.leftToPay'),
+          value: money.format(remaining),
         ),
       ],
     ),
@@ -245,6 +308,10 @@ class TotalsCard extends StatelessWidget {
 }
 
 /// "In 5 days — Salary: 2 400 €" (spec 4.4).
+///
+/// On the accent tint rather than the plain card ground: money arriving is the
+/// one thing on this screen that is unambiguously good news, and the tint is
+/// what separates it from the three cards of obligations above.
 class NearestIncomeCard extends StatelessWidget {
   const NearestIncomeCard({
     required this.income,
@@ -259,6 +326,7 @@ class NearestIncomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final Income? row = income;
 
@@ -272,32 +340,41 @@ class NearestIncomeCard extends StatelessWidget {
     final Decimal? amount = row.amount;
 
     return SageCard(
-      child: Row(
+      color: sage.accentTint,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(Icons.south_west, size: 20, color: context.sage.accentStrong),
-          const SizedBox(width: SageSpace.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  days == 0
-                      ? tr('dashboard.incomeToday')
-                      : plural('dashboard.incomeInDays', days),
-                  style: text.labelSmall,
-                ),
-                const SizedBox(height: SageSpace.xs),
-                Text(row.title, style: text.bodyLarge),
-              ],
-            ),
-          ),
+          Text(tr('dashboard.nearestIncome'), style: text.titleSmall),
+          const SizedBox(height: SageSpace.xs),
           Text(
-            amount == null ? tr('income.amountUnknown') : money.format(amount),
-            style: text.titleSmall?.copyWith(
-              color: amount == null
-                  ? context.sage.inkLabel
-                  : context.sage.accentStrong,
-            ),
+            days == 0
+                ? tr('dashboard.incomeToday')
+                : plural('dashboard.incomeInDays', days),
+            style: text.bodySmall?.copyWith(color: sage.inkSecondary),
+          ),
+          const SizedBox(height: SageSpace.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  row.title,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(width: SageSpace.md),
+              Text(
+                amount == null
+                    ? tr('income.amountUnknown')
+                    : '+${money.format(amount)}',
+                style: text.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: amount == null ? sage.inkLabel : sage.accentStrong,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -317,17 +394,19 @@ class ModeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
+    return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(
+          horizontal: SageSpace.md,
+          vertical: SageSpace.xs,
+        ),
         decoration: BoxDecoration(
           color: sage.accentTintAlt,
           borderRadius: BorderRadius.circular(SageRadius.pill),
         ),
         child: Text(
           mode,
-          style: Theme.of(context).textTheme.labelSmall
+          style: Theme.of(context).textTheme.labelMedium
               ?.copyWith(color: sage.accentStrong),
         ),
       ),
