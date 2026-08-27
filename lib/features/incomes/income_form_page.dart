@@ -409,7 +409,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
             if (!_isRegular) ...<Widget>[
               LabelledField(
                 label: tr('income.fieldDate'),
-                child: _DateField(
+                child: DateField(
                   label: dates.dayMonth(_date!),
                   onTap: _isFrozen ? null : () => _pickDate(actual: false),
                 ),
@@ -501,7 +501,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                 const SizedBox(height: SageSpace.sm),
                 LabelledField(
                   label: tr('income.fieldActualDate'),
-                  child: _DateField(
+                  child: DateField(
                     label: dates.dayMonth(_actualDate ?? _date!),
                     onTap: _isFrozen ? null : () => _pickDate(actual: true),
                   ),
@@ -567,8 +567,9 @@ class _AppendNoteField extends StatelessWidget {
   );
 }
 
-class _DateField extends StatelessWidget {
-  const _DateField({required this.label, required this.onTap});
+/// A tappable date, shown as a field. Shared with the receipt dialog.
+class DateField extends StatelessWidget {
+  const DateField({required this.label, required this.onTap, super.key});
 
   final String label;
 

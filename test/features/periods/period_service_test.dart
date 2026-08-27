@@ -445,6 +445,106 @@ void main() {
     });
   });
 
+  group('a settled anchor moves the cycle it opens', () {
+    // A salary that arrived early means the days between belong to the cycle
+    // it opened: money spent on them came out of that salary, not the
+    // previous one (spec 5.4, as refined).
+    Future<Income> anchorIncomeOf(BudgetPeriod period) async {
+      final List<Income> rows = await repos.incomes.inSpace(space.id);
+      return rows.firstWhere((Income i) => i.budgetPeriodId == period.id);
+    }
+
+    Future<BudgetPeriod> periodAt(int index) async => (await periods())[index];
+
+    test('the cycle starts on the day the money arrived', () async {
+      await anchorOn(15);
+      await service.refresh(space, today);
+
+      // The cycle after the current one, so both it and its predecessor are
+      // still open and may move.
+      final BudgetPeriod second = await periodAt(1);
+      final Income salary = await anchorIncomeOf(second);
+      await repos.incomes.update(
+        salary.id,
+        isPaid: const Value<bool>(true),
+        actualDate: Value<CalendarDate>(salary.expectedDate.addDays(-2)),
+      );
+      await service.refresh(space, today);
+
+      final BudgetPeriod moved = await periodAt(1);
+      expect(moved.startDate, salary.expectedDate.addDays(-2));
+      expect(moved.anchorDate, salary.expectedDate.addDays(-2));
+    });
+
+    test('the previous cycle ends the day before', () async {
+      await anchorOn(15);
+      await service.refresh(space, today);
+
+      final BudgetPeriod second = await periodAt(1);
+      final Income salary = await anchorIncomeOf(second);
+      final CalendarDate actual = salary.expectedDate.addDays(-2);
+      await repos.incomes.update(
+        salary.id,
+        isPaid: const Value<bool>(true),
+        actualDate: Value<CalendarDate>(actual),
+      );
+      await service.refresh(space, today);
+
+      expect((await periodAt(0)).endDate, actual.addDays(-1));
+    });
+
+    test('later cycles keep the dates the schedule computed', () async {
+      await anchorOn(15);
+      await service.refresh(space, today);
+      final CalendarDate thirdStart = (await periodAt(2)).startDate;
+
+      final BudgetPeriod second = await periodAt(1);
+      final Income salary = await anchorIncomeOf(second);
+      await repos.incomes.update(
+        salary.id,
+        isPaid: const Value<bool>(true),
+        actualDate: Value<CalendarDate>(salary.expectedDate.addDays(-2)),
+      );
+      await service.refresh(space, today);
+
+      // One early payment does not shift the timetable (spec 5.4).
+      expect((await periodAt(2)).startDate, thirdStart);
+    });
+
+    test('the window collapses onto the day it arrived', () async {
+      await anchorOn(15);
+      await service.refresh(space, today);
+
+      final BudgetPeriod second = await periodAt(1);
+      final Income salary = await anchorIncomeOf(second);
+      final CalendarDate actual = salary.expectedDate.addDays(-2);
+      await repos.incomes.update(
+        salary.id,
+        isPaid: const Value<bool>(true),
+        actualDate: Value<CalendarDate>(actual),
+      );
+      await service.refresh(space, today);
+
+      // Nothing is uncertain about a day that has already happened.
+      final BudgetPeriod moved = await periodAt(1);
+      expect(moved.windowStart, actual);
+      expect(moved.windowEnd, actual);
+    });
+
+    test('an unconfirmed receipt moves nothing', () async {
+      await anchorOn(15);
+      await service.refresh(space, today);
+      final CalendarDate before = (await periodAt(1)).startDate;
+
+      // Marked received, but no date given: there is no fact to move to.
+      final Income salary = await anchorIncomeOf(await periodAt(1));
+      await repos.incomes.update(salary.id, isPaid: const Value<bool>(true));
+      await service.refresh(space, today);
+
+      expect((await periodAt(1)).startDate, before);
+    });
+  });
+
   test('Flow spaces are left alone entirely', () async {
     final Space flow = await repos.spaces.create(
       title: 'Freelance',

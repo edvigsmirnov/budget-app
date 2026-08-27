@@ -111,10 +111,12 @@ class FeedRowTile extends StatelessWidget {
         labelKey: 'common.delete',
         isDestructive: true,
       ),
-      secondaryBackground: const _SwipeAction(
+      secondaryBackground: _SwipeAction(
         alignment: Alignment.centerRight,
         icon: Icons.check_circle_outline,
-        labelKey: 'payment.togglePaid',
+        // Money arriving is received, not paid. The two are opposite
+        // directions of the same fact and must not share a word.
+        labelKey: record.isIncome ? 'income.received' : 'payment.togglePaid',
         isDestructive: false,
       ),
       confirmDismiss: (DismissDirection direction) async {

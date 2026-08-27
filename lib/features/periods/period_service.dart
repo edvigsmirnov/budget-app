@@ -96,7 +96,12 @@ class PeriodService {
     );
 
     final ({int created, int removed, int updated}) periods =
-        await _syncPeriods(space: space, computed: computed, today: today);
+        await _syncPeriods(
+          space: space,
+          computed: computed,
+          today: today,
+          settled: await _settledAnchors(space, rules),
+        );
     // Occurrences stop at the last known boundary, so every materialised row
     // has a period to belong to. The horizon moves them along together.
     final List<BudgetPeriod> boundaries = await repos.periods.incomeDrivenIn(
@@ -131,11 +136,48 @@ class PeriodService {
     );
   }
 
+  /// The day each period's anchor income actually arrived, where that is
+  /// known (spec 5.4).
+  ///
+  /// A salary that came two days early means the days between belong to the
+  /// cycle it opened, not to the one before: money spent on them came out of
+  /// the new salary. So the receipt date, once confirmed, is the anchor —
+  /// and because one cycle ends the day before the next begins, moving it
+  /// carries the previous cycle's end along without a second rule.
+  ///
+  /// Only the cycle whose own anchor was confirmed moves. Later ones keep the
+  /// dates the schedule computed: one early payment does not shift the
+  /// timetable (spec 5.4).
+  Future<Map<String, CalendarDate>> _settledAnchors(
+    Space space,
+    List<IncomeRecurrenceRule> rules,
+  ) async {
+    final Set<String> anchorRuleIds = <String>{
+      for (final IncomeRecurrenceRule r in rules)
+        if (r.isAnchor) r.id,
+    };
+    if (anchorRuleIds.isEmpty) return const <String, CalendarDate>{};
+
+    final Map<String, CalendarDate> byPeriod = <String, CalendarDate>{};
+    for (final Income income in await repos.incomes.inSpace(space.id)) {
+      final String? periodId = income.budgetPeriodId;
+      final CalendarDate? actual = income.actualDate;
+      if (periodId == null || actual == null || !income.isPaid) continue;
+      if (!anchorRuleIds.contains(income.recurrenceRuleId)) continue;
+      // Anchors that merged into one period share it; the earliest arrival is
+      // the day the money started being available.
+      final CalendarDate? held = byPeriod[periodId];
+      if (held == null || actual.isBefore(held)) byPeriod[periodId] = actual;
+    }
+    return byPeriod;
+  }
+
   /// Writes the computed boundaries over the open periods, in order.
   Future<({int created, int updated, int removed})> _syncPeriods({
     required Space space,
     required List<MaterializedPeriod> computed,
     required CalendarDate today,
+    Map<String, CalendarDate> settled = const <String, CalendarDate>{},
   }) async {
     final List<BudgetPeriod> existing = await repos.periods.incomeDrivenIn(
       space.id,
@@ -155,20 +197,59 @@ class PeriodService {
                 a.startDate.compareTo(b.startDate),
           );
 
+    // The last day of history. An open period may not start before it, or the
+    // two would overlap and a closed period would have to move to make room.
+    final CalendarDate? closedThrough = existing
+        .where(
+          (BudgetPeriod p) => p.endDate != null && p.endDate!.isBefore(today),
+        )
+        .map((BudgetPeriod p) => p.endDate!)
+        .fold<CalendarDate?>(
+          null,
+          (CalendarDate? a, CalendarDate b) =>
+              a == null || a.isBefore(b) ? b : a,
+        );
+
+    /// Where period [i] actually begins: the confirmed receipt if there is
+    /// one, otherwise the date the schedule computed.
+    CalendarDate anchorOf(int i) {
+      if (i >= computed.length) return computed.last.anchorDate;
+      final CalendarDate scheduled = computed[i].anchorDate;
+      if (i >= open.length) return scheduled;
+
+      final CalendarDate? actual = settled[open[i].id];
+      if (actual == null) return scheduled;
+      // Never back into closed history.
+      if (closedThrough != null && !actual.isAfter(closedThrough)) {
+        return closedThrough.addDays(1);
+      }
+      return actual;
+    }
+
     int created = 0;
     int updated = 0;
 
     for (int i = 0; i < computed.length; i++) {
       final MaterializedPeriod period = computed[i];
       if (i < open.length) {
+        final CalendarDate start = anchorOf(i);
+        // One cycle ends the day before the next begins, so a settled anchor
+        // pulls the previous cycle's end with it.
+        final CalendarDate? end = i + 1 < computed.length
+            ? anchorOf(i + 1).addDays(-1)
+            : period.endDate;
+        final bool moved = start != period.anchorDate;
+
         await repos.periods.updateBoundaries(
           open[i].id,
-          startDate: period.startDate,
-          endDate: period.endDate,
-          anchorDate: period.anchorDate,
-          windowStart: period.windowStart,
-          windowEnd: period.windowEnd,
-          holidayDataIncomplete: _incomplete(period),
+          startDate: start,
+          endDate: end,
+          anchorDate: start,
+          // A confirmed receipt leaves nothing uncertain: the window collapses
+          // onto the day it arrived.
+          windowStart: moved ? start : period.windowStart,
+          windowEnd: moved ? start : period.windowEnd,
+          holidayDataIncomplete: moved ? false : _incomplete(period),
         );
         updated++;
       } else {

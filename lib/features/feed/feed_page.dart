@@ -22,6 +22,7 @@ import 'package:sielto/features/feed/feed_reorder.dart';
 import 'package:sielto/features/feed/feed_row.dart';
 import 'package:sielto/features/feed/feed_window.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
+import 'package:sielto/features/incomes/receipt_dialog.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
@@ -404,10 +405,28 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         }
         return;
       }
+
+      // Confirming a receipt is not a bare flag: the spec asks for the date
+      // the money actually arrived, defaulting to the expected one (spec 5.4).
+      CalendarDate? actual;
+      if (next) {
+        if (!mounted) return;
+        actual = await askReceiptDate(context, expected: record.date);
+        if (actual == null) return;
+      }
+      if (!mounted) return;
+
       await guardFreeze(
         context,
-        () => repos.incomes.update(record.id, isPaid: Value<bool>(next)),
+        () => repos.incomes.update(
+          record.id,
+          isPaid: Value<bool>(next),
+          // Clearing the receipt clears the fact with it (spec 5.4).
+          actualDate: Value<CalendarDate?>(actual),
+        ),
       );
+      // An anchor arriving early moves the cycle it opens (spec 5.4).
+      ref.invalidate(periodRefreshProvider);
       return;
     }
     await guardFreeze(
