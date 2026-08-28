@@ -115,7 +115,7 @@ class FlowLedger {
 
   Decimal get totalRemaining => totalPlanned - totalPaid;
 
-  Coverage get coverage => cascade.coverage;
+  Coverage? get coverage => cascade.coverage;
 
   /// Free money once everything planned is covered; null when it is not.
   Decimal? get freeCash => cascade.all.freeCash;
@@ -123,12 +123,8 @@ class FlowLedger {
   /// After the mandatory expenses alone. The floor to stay above (spec 4.4).
   Decimal? get baseRemainder => cascade.mandatory.freeCash;
 
-  /// The last day the money reaches — the day before the first expense that
-  /// does not fit. Null while everything is covered.
-  CalendarDate? get lastCoveredDay {
-    final CalendarDate? cutoff = cascade.all.cutoffDate;
-    return cutoff?.addDays(-1);
-  }
+  /// The last day the money reaches. Null while it reaches everything.
+  CalendarDate? get lastCoveredDay => cascade.lastCoveredDay;
 
   /// Coverage per entry id, for the cutoff line in the Feed.
   Map<String, bool> get coverageByEntry => <String, bool>{

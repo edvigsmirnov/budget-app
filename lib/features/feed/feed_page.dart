@@ -116,7 +116,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       today: source.today,
       orderMode: space.feedOrderMode,
       coverage: source.coverage,
-      cutoffEntryId: source.cutoffEntryId,
+      moneyEndsAt: source.moneyEndsAt,
     );
     final List<FeedItem> items = _items;
 
@@ -211,7 +211,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           records: records,
           today: ref.watch(spaceClockProvider).today(),
           coverage: const <String, bool>{},
-          cutoffEntryId: null,
+          moneyEndsAt: null,
           available: null,
           freeCash: null,
           paid: Decimal.zero,
@@ -226,7 +226,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         // The colouring belongs to the cycle the figures describe; records
         // outside it are drawn plainly rather than in another cycle's colours.
         coverage: ledger.coverageByEntry,
-        cutoffEntryId: ledger.cascade?.all.cutoffEntryId,
+        moneyEndsAt: ledger.cascade?.moneyEndsAt,
         available: ledger.anchorAmount,
         freeCash: ledger.freeCash,
         paid: ledger.totalPaid,
@@ -241,7 +241,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       records: records,
       today: flow.today,
       coverage: flow.coverageByEntry,
-      cutoffEntryId: flow.cascade.all.cutoffEntryId,
+      moneyEndsAt: flow.cascade.moneyEndsAt,
       available: flow.available,
       freeCash: flow.freeCash,
       paid: flow.totalPaid,
@@ -605,7 +605,7 @@ class _FeedSource {
     required this.records,
     required this.today,
     required this.coverage,
-    required this.cutoffEntryId,
+    required this.moneyEndsAt,
     required this.available,
     required this.freeCash,
     required this.paid,
@@ -617,8 +617,9 @@ class _FeedSource {
   final CalendarDate today;
   final Map<String, bool> coverage;
 
-  /// The row the money runs out on, or null when it covers everything.
-  final String? cutoffEntryId;
+  /// The row the money runs out on and which side of it the line falls, or
+  /// null when it covers everything.
+  final ({String entryId, bool below})? moneyEndsAt;
 
   /// The sum the walk started from. Null when it is not known — an anchor
   /// income with no amount yet (spec 4.7).

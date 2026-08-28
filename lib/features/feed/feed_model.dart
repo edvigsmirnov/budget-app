@@ -180,7 +180,7 @@ List<FeedItem> buildFeedItems({
   required CalendarDate today,
   required FeedOrderMode orderMode,
   Map<String, bool> coverage = const <String, bool>{},
-  String? cutoffEntryId,
+  ({String entryId, bool below})? moneyEndsAt,
 }) {
   final List<FeedRecord> overdue = <FeedRecord>[];
   final Map<String, List<FeedRecord>> byDay = <String, List<FeedRecord>>{};
@@ -220,8 +220,12 @@ List<FeedItem> buildFeedItems({
     final List<FeedRecord> rows = byDay[day]!
       ..sort((FeedRecord a, FeedRecord b) => compareInDay(a, b, orderMode));
     for (final FeedRecord r in rows) {
-      if (r.id == cutoffEntryId) items.add(FeedCutoff(r.date));
+      // Above the row when the money could not pay it, below when it paid it
+      // and stopped there (spec 4.9, and the zero rule over it).
+      final bool endsHere = moneyEndsAt?.entryId == r.id;
+      if (endsHere && !moneyEndsAt!.below) items.add(FeedCutoff(r.date));
       items.add(FeedRow(r, isCovered: coverage[r.id] ?? true));
+      if (endsHere && moneyEndsAt!.below) items.add(FeedCutoff(r.date));
     }
   }
 

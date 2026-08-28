@@ -75,10 +75,19 @@ void main() {
   );
 
   group('available money', () {
-    test('with no balance set, available is zero', () async {
+    test('with no balance set, available is zero and nothing is judged', () async {
+      // No money and no plan is not "spent to the last unit". There is nothing
+      // to compute a verdict from, so the dot has none to show.
       final FlowLedger ledger = await build();
       expect(ledger.available, Decimal.zero);
-      expect(ledger.coverage, Coverage.exact);
+      expect(ledger.coverage, isNull);
+    });
+
+    test('with no money but something planned, the verdict is short', () async {
+      await addExpense('rent', '2026-03-20', '600');
+
+      final FlowLedger ledger = await build();
+      expect(ledger.coverage, Coverage.short);
     });
 
     test('the manual balance is the starting sum', () async {

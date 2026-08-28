@@ -178,13 +178,31 @@ void main() {
         today: today,
         orderMode: FeedOrderMode.free,
         coverage: <String, bool>{'covered': true, 'short': false},
-        cutoffEntryId: 'short',
+        moneyEndsAt: (entryId: 'short', below: false),
       );
       expect(keysOf(items), <String>[
         'header:2026-03-15',
         'row:covered',
         'cutoff',
         'row:short',
+      ]);
+    });
+
+    test('is drawn below the entry the money paid to the last unit', () {
+      final List<FeedItem> items = buildFeedItems(
+        records: <FeedRecord>[
+          expense('last', '2026-03-15', sortOrder: 0),
+          expense('after', '2026-03-15', sortOrder: 1024),
+        ],
+        today: today,
+        orderMode: FeedOrderMode.free,
+        moneyEndsAt: (entryId: 'last', below: true),
+      );
+      expect(keysOf(items), <String>[
+        'header:2026-03-15',
+        'row:last',
+        'cutoff',
+        'row:after',
       ]);
     });
 

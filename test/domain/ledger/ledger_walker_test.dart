@@ -112,6 +112,94 @@ void main() {
     });
   });
 
+  group('where the money ends', () {
+    test('an expense paid to the last unit takes the line below it', () {
+      final LedgerRun run = LedgerWalker.walk(
+        available: m('500'),
+        entries: <LedgerEntry>[
+          expense('rent', '2026-03-05', '200'),
+          expense('card', '2026-03-10', '300'),
+        ],
+      );
+      // Everything fits, so there is no cutoff — but there is nothing left
+      // after the 10th either, and the Feed says so under that row.
+      expect(run.cutoffEntryId, isNull);
+      expect(run.moneyEndsAt, (entryId: 'card', below: true));
+      expect(run.lastCoveredDay, d('2026-03-10'));
+    });
+
+    test('an expense that does not fit takes the line above it', () {
+      final LedgerRun run = LedgerWalker.walk(
+        available: m('500'),
+        entries: <LedgerEntry>[
+          expense('rent', '2026-03-05', '200'),
+          expense('card', '2026-03-10', '400'),
+        ],
+      );
+      expect(run.moneyEndsAt, (entryId: 'card', below: false));
+      expect(run.lastCoveredDay, d('2026-03-09'));
+    });
+
+    test('the first of the two wins, so only one line is ever drawn', () {
+      final LedgerRun run = LedgerWalker.walk(
+        available: m('500'),
+        entries: <LedgerEntry>[
+          expense('rent', '2026-03-05', '500'),
+          expense('card', '2026-03-10', '100'),
+        ],
+      );
+      expect(run.exhaustedEntryId, 'rent');
+      expect(run.cutoffEntryId, 'card');
+      expect(run.moneyEndsAt, (entryId: 'rent', below: true));
+    });
+
+    test('money left over draws no line at all', () {
+      final LedgerRun run = LedgerWalker.walk(
+        available: m('500'),
+        entries: <LedgerEntry>[expense('rent', '2026-03-05', '200')],
+      );
+      expect(run.moneyEndsAt, isNull);
+      expect(run.lastCoveredDay, isNull);
+    });
+
+    test('an income that lands on zero is not an ending', () {
+      // Only an expense empties the balance; an income arriving at zero is
+      // money coming in, not running out.
+      final LedgerRun run = LedgerWalker.walk(
+        available: m('-100'),
+        entries: <LedgerEntry>[income('salary', '2026-03-05', '100')],
+      );
+      expect(run.exhaustedEntryId, isNull);
+    });
+  });
+
+  group('the coverage verdict needs data', () {
+    test('no money and nothing planned has no verdict', () {
+      final LedgerCascade cascade = LedgerWalker.cascade(
+        available: Decimal.zero,
+        entries: const <LedgerEntry>[],
+      );
+      expect(cascade.hasData, isFalse);
+      expect(cascade.coverage, isNull);
+    });
+
+    test('nothing planned but money on hand does', () {
+      final LedgerCascade cascade = LedgerWalker.cascade(
+        available: m('500'),
+        entries: const <LedgerEntry>[],
+      );
+      expect(cascade.coverage, Coverage.covered);
+    });
+
+    test('no money but something planned does', () {
+      final LedgerCascade cascade = LedgerWalker.cascade(
+        available: Decimal.zero,
+        entries: <LedgerEntry>[expense('rent', '2026-03-05', '200')],
+      );
+      expect(cascade.coverage, Coverage.short);
+    });
+  });
+
   group('future income joins only on its own date', () {
     test('money that arrives too late does not prevent a cutoff', () {
       // The rule that makes this more than a SUM: totals balance on paper

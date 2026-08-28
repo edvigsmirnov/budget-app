@@ -106,6 +106,21 @@ class MainFigure extends StatelessWidget {
                 ],
               ],
             ),
+            // The plan fits, and the money still ends inside it. The figure
+            // above is the remainder at the end; this is the day it reaches.
+            if (!short && lastCoveredDay != null) ...<Widget>[
+              const SizedBox(height: SageSpace.xs),
+              Text(
+                tr(
+                  'dashboard.moneyEndsOn',
+                  namedArgs: <String, String>{
+                    'date': dates.dayMonth(lastCoveredDay!, reference: today),
+                  },
+                ),
+                textAlign: TextAlign.center,
+                style: text.bodySmall?.copyWith(color: sage.warningAccent),
+              ),
+            ],
             if (subtitle != null) ...<Widget>[
               const SizedBox(height: SageSpace.xs),
               Text(

@@ -79,10 +79,7 @@ class PeriodLedger {
   Decimal? get baseRemainder => cascade?.mandatory.freeCash;
 
   /// The last day the money reaches, when it does not reach the whole period.
-  CalendarDate? get lastCoveredDay {
-    final CalendarDate? cutoff = cascade?.all.cutoffDate;
-    return cutoff?.addDays(-1);
-  }
+  CalendarDate? get lastCoveredDay => cascade?.lastCoveredDay;
 
   Map<String, bool> get coverageByEntry => <String, bool>{
     for (final LedgerStep step in cascade?.all.steps ?? const <LedgerStep>[])

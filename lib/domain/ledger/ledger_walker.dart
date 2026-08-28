@@ -43,6 +43,8 @@ class LedgerRun {
     required this.finalBalance,
     required this.cutoffEntryId,
     required this.cutoffDate,
+    required this.exhaustedEntryId,
+    required this.exhaustedDate,
     required this.coverage,
   });
 
@@ -60,9 +62,37 @@ class LedgerRun {
   /// The date of that expense. "Money lasts until ..." is the day before.
   final CalendarDate? cutoffDate;
 
+  /// The expense that is paid in full and leaves nothing, when that happens
+  /// before any cutoff. Null when the balance never lands exactly on zero.
+  final String? exhaustedEntryId;
+
+  final CalendarDate? exhaustedDate;
+
   final Coverage coverage;
 
   bool get hasCutoff => cutoffEntryId != null;
+
+  /// The row the "money runs out" line attaches to, and which side of it the
+  /// line falls on.
+  ///
+  /// Spec 4.9 puts the line where the balance first goes negative, which draws
+  /// nothing at all when the plan lands exactly on zero — the money has ended
+  /// and the Feed says so nowhere. The line marks reaching zero instead: above
+  /// an expense that cannot be paid, below one that is paid with nothing left.
+  /// The two cannot both be the first, so there is never more than one line.
+  ({String entryId, bool below})? get moneyEndsAt {
+    final String? exhausted = exhaustedEntryId;
+    if (exhausted != null) return (entryId: exhausted, below: true);
+    final String? cutoff = cutoffEntryId;
+    if (cutoff != null) return (entryId: cutoff, below: false);
+    return null;
+  }
+
+  /// The last day the money reaches, or null while it reaches everything.
+  ///
+  /// An emptied balance covered its own day; a cutoff did not, so that one
+  /// counts back a day.
+  CalendarDate? get lastCoveredDay => exhaustedDate ?? cutoffDate?.addDays(-1);
 
   /// Money left when everything is covered; null once there is a cutoff,
   /// because "free money" is not a meaningful figure then.
@@ -96,6 +126,8 @@ abstract final class LedgerWalker {
     Decimal balance = available;
     String? cutoffEntryId;
     CalendarDate? cutoffDate;
+    String? exhaustedEntryId;
+    CalendarDate? exhaustedDate;
     final List<LedgerStep> steps = <LedgerStep>[];
 
     for (final LedgerEntry entry in ordered) {
@@ -120,6 +152,15 @@ abstract final class LedgerWalker {
         cutoffEntryId = entry.id;
         cutoffDate = entry.date;
       }
+      // Paid in full, and the last unit went with it. The money has ended even
+      // though nothing fell short.
+      if (covered &&
+          after == Decimal.zero &&
+          exhaustedEntryId == null &&
+          cutoffEntryId == null) {
+        exhaustedEntryId = entry.id;
+        exhaustedDate = entry.date;
+      }
 
       balance = after;
       steps.add(
@@ -133,6 +174,8 @@ abstract final class LedgerWalker {
       finalBalance: balance,
       cutoffEntryId: cutoffEntryId,
       cutoffDate: cutoffDate,
+      exhaustedEntryId: exhaustedEntryId,
+      exhaustedDate: exhaustedDate,
       coverage: _coverage(
         hasCutoff: cutoffEntryId != null,
         finalBalance: balance,
@@ -180,5 +223,16 @@ class LedgerCascade {
   final LedgerRun all;
 
   /// The dot follows the full picture, not the mandatory-only pass.
-  Coverage get coverage => all.coverage;
+  ///
+  /// Null when there is nothing to judge — no money and nothing planned. The
+  /// arithmetic calls that "covered to the last unit", which is a verdict on
+  /// data that does not exist.
+  Coverage? get coverage => hasData ? all.coverage : null;
+
+  bool get hasData => all.available != Decimal.zero || all.steps.isNotEmpty;
+
+  /// Where the money runs out, over the full plan.
+  ({String entryId, bool below})? get moneyEndsAt => all.moneyEndsAt;
+
+  CalendarDate? get lastCoveredDay => all.lastCoveredDay;
 }
