@@ -131,7 +131,12 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
   Future<void> _open(Space space) async {
     // In memory, and instant: a local Space needs no network (spec 3.1).
     await ref.read(currentSpaceIdProvider.notifier).select(space.id);
-    if (mounted) Navigator.of(context).pop();
+    // Back to the shell, closing whatever the switcher was opened over: the
+    // point of switching is to look at the other Space, not at the screen that
+    // belonged to the last one.
+    if (mounted) {
+      Navigator.of(context).popUntil((Route<void> r) => r.isFirst);
+    }
   }
 
   void _openSettings(Space space) {

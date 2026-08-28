@@ -5,6 +5,7 @@ import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -207,5 +208,65 @@ void main() {
 
     final PeriodLedger ledger = await ledgerOf(await currentPeriod());
     expect(ledger.freeCash, m('2324'));
+  });
+
+  group('a cycle with no income of its own', () {
+    /// Leaves the current cycle with no inflow at all, the way a gap period
+    /// before the salary rule starts has none.
+    Future<BudgetPeriod> emptyOfIncome() async {
+      await addSalary();
+      final BudgetPeriod period = await currentPeriod();
+      for (final Income i in await repos.incomes.inSpace(space.id)) {
+        await repos.incomes.softDelete(i.id);
+      }
+      return period;
+    }
+
+    test('with everything settled it is not judged at all', () async {
+      final BudgetPeriod period = await emptyOfIncome();
+      await repos.payments.create(
+        spaceId: space.id,
+        title: 'Rent',
+        amount: m('900'),
+        dueDate: d('2026-03-12'),
+        expenseType: ExpenseType.mandatory,
+        isPaid: true,
+      );
+
+      final PeriodLedger ledger = await ledgerOf(period);
+      expect(ledger.hasIncome, isFalse);
+      expect(ledger.isJudged, isFalse);
+      // No dot, no cutoff, no date the money runs out on.
+      expect(ledger.coverage, isNull);
+      expect(ledger.baseCoverage, isNull);
+      expect(ledger.moneyEndsAt, isNull);
+      expect(ledger.lastCoveredDay, isNull);
+      expect(ledger.coverageByEntry, isEmpty);
+      // The remainder is still arithmetic, and still shown.
+      expect(ledger.freeCash, m('-900'));
+    });
+
+    test('with nothing in it at all it is not judged either', () async {
+      final PeriodLedger ledger = await ledgerOf(await emptyOfIncome());
+      expect(ledger.isJudged, isFalse);
+      expect(ledger.coverage, isNull);
+      expect(ledger.freeCash, Decimal.zero);
+    });
+
+    test('something still owed brings the verdict back', () async {
+      final BudgetPeriod period = await emptyOfIncome();
+      await repos.payments.create(
+        spaceId: space.id,
+        title: 'Rent',
+        amount: m('900'),
+        dueDate: d('2026-03-12'),
+        expenseType: ExpenseType.mandatory,
+      );
+
+      final PeriodLedger ledger = await ledgerOf(period);
+      expect(ledger.isJudged, isTrue);
+      expect(ledger.coverage, Coverage.short);
+      expect(ledger.moneyEndsAt, isNotNull);
+    });
   });
 }

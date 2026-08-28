@@ -24,7 +24,7 @@ FeedRecord expense(
 );
 
 List<FeedItem> feed(List<FeedRecord> records, FeedOrderMode mode) =>
-    buildFeedItems(records: records, today: d('2026-03-01'), orderMode: mode);
+    buildFeedItems(records: records, orderMode: mode);
 
 void main() {
   group('within one day', () {
@@ -159,24 +159,22 @@ void main() {
     );
   });
 
-  test('a drop into the overdue section asks for a date', () {
-    // That section spans several dates, so it names no single day. The move is
-    // treated like any other cross-day drag: the picker opens, and nothing is
-    // written unless it is confirmed.
+  test('a drop above the first day heading asks for a date', () {
+    // Nothing above the first heading names a day, so a drop there is treated
+    // like any other cross-day drag: the picker opens, and nothing is written
+    // unless it is confirmed.
     final List<FeedItem> items = buildFeedItems(
       records: <FeedRecord>[
-        expense('missed', '2026-02-01'),
+        expense('early', '2026-02-01'),
         expense('later', '2026-03-20'),
       ],
-      today: d('2026-03-01'),
       orderMode: FeedOrderMode.free,
     );
-    // [overdueBand, h02-01, missed, h03-20, later]; 'later' dropped straight
-    // under the band, where no day has been named yet.
+    // [h02-01, early, h03-20, later]; 'later' dropped above every heading.
     final ReorderOutcome outcome = resolveReorder(
       items: items,
-      oldIndex: 4,
-      insertAt: 1,
+      oldIndex: 3,
+      insertAt: 0,
       orderMode: FeedOrderMode.free,
     );
     expect(outcome, isA<ReorderToOtherDay>());

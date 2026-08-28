@@ -117,7 +117,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     _items = buildFeedItems(
       records: source.records,
-      today: source.today,
       orderMode: space.feedOrderMode,
       coverage: source.coverage,
       moneyEndsAt: source.moneyEndsAt,
@@ -191,13 +190,15 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
   }
 
-  /// What the list draws, and the two figures above it.
+  /// What the list draws, and the four figures above it.
   ///
   /// One continuous list in every mode: the Feed scrolls into the past and the
-  /// future and is deliberately not clipped to a period (spec 4.5). What the
-  /// period decides is the two numbers above it — and which period that is
-  /// comes from where the list is scrolled to, so moving through the records
-  /// moves the figures with them.
+  /// future and is deliberately not clipped to a period (spec 4.5).
+  ///
+  /// Every cycle contributes its own coverage and its own cutoff line, so the
+  /// list is the same whichever period is selected. Only the figures follow the
+  /// scroll — which is what keeps crossing a boundary from redrawing the rows
+  /// under the finger.
   _FeedSource? _source(Space space) {
     final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
     final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
@@ -213,18 +214,29 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     _applyDropped(records);
 
     if (space.budgetMode == BudgetMode.incomeDriven) {
+      final List<PeriodLedger> ledgers =
+          ref.watch(periodLedgersProvider).value ?? const <PeriodLedger>[];
+      final Map<String, bool> coverage = <String, bool>{};
+      final Map<String, bool> endsAt = <String, bool>{};
+      for (final PeriodLedger ledger in ledgers) {
+        coverage.addAll(ledger.coverageByEntry);
+        final ({String entryId, bool below})? end = ledger.moneyEndsAt;
+        if (end != null) endsAt[end.entryId] = end.below;
+      }
+
       // Before the first regular income there are no cycles at all, which is a
-      // valid permanent state: the list still shows, with no figures over it
-      // (spec 4.7).
-      final PeriodLedger? ledger = ref.watch(periodLedgerProvider).value;
-      if (ref.watch(selectedPeriodProvider) == null || ledger == null) {
+      // valid permanent state: the list still shows, with no cycle figures over
+      // it (spec 4.7). Zero, not unknown — nothing is coming, and that is what
+      // zero means.
+      final PeriodLedger? selected = ref.watch(periodLedgerProvider).value;
+      if (selected == null) {
         return _FeedSource(
           records: records,
           today: ref.watch(spaceClockProvider).today(),
-          coverage: const <String, bool>{},
-          moneyEndsAt: null,
-          available: null,
-          freeCash: null,
+          coverage: coverage,
+          moneyEndsAt: endsAt,
+          available: Decimal.zero,
+          freeCash: Decimal.zero,
           paid: Decimal.zero,
           remaining: Decimal.zero,
           byPeriod: false,
@@ -233,26 +245,25 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
       return _FeedSource(
         records: records,
-        today: ledger.today,
-        // The colouring belongs to the cycle the figures describe; records
-        // outside it are drawn plainly rather than in another cycle's colours.
-        coverage: ledger.coverageByEntry,
-        moneyEndsAt: ledger.cascade?.moneyEndsAt,
-        available: ledger.anchorAmount,
-        freeCash: ledger.freeCash,
-        paid: ledger.totalPaid,
-        remaining: ledger.totalRemaining,
+        today: selected.today,
+        coverage: coverage,
+        moneyEndsAt: endsAt,
+        available: selected.anchorAmount,
+        freeCash: selected.freeCash,
+        paid: selected.totalPaid,
+        remaining: selected.totalRemaining,
         byPeriod: true,
       );
     }
 
     final FlowLedger? flow = ref.watch(flowLedgerProvider).value;
     if (flow == null) return null;
+    final ({String entryId, bool below})? end = flow.cascade.moneyEndsAt;
     return _FeedSource(
       records: records,
       today: flow.today,
       coverage: flow.coverageByEntry,
-      moneyEndsAt: flow.cascade.moneyEndsAt,
+      moneyEndsAt: <String, bool>{if (end != null) end.entryId: end.below},
       available: flow.available,
       freeCash: flow.freeCash,
       paid: flow.totalPaid,
@@ -319,7 +330,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         FeedCutoff() => _cutoffExtent,
         FeedRow() => rowHeight,
       };
-      if (item is FeedHeader && item.date != null) lastHeader = item.date;
+      if (item is FeedHeader) lastHeader = item.date;
       if (y + h > offset) return lastHeader ?? _firstDateOf(items);
       y += h;
     }
@@ -328,7 +339,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   CalendarDate? _firstDateOf(List<FeedItem> items) {
     for (final FeedItem item in items) {
-      if (item is FeedHeader && item.date != null) return item.date;
+      if (item is FeedHeader) return item.date;
     }
     return null;
   }
@@ -341,9 +352,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
     double y = 0;
     for (final FeedItem item in items) {
-      if (item is FeedHeader &&
-          item.date != null &&
-          !item.date!.isBefore(period.startDate)) {
+      if (item is FeedHeader && !item.date.isBefore(period.startDate)) {
         _scroll.animateTo(
           y.clamp(
             _scroll.position.minScrollExtent,
@@ -628,9 +637,8 @@ class _FeedSource {
   final CalendarDate today;
   final Map<String, bool> coverage;
 
-  /// The row the money runs out on and which side of it the line falls, or
-  /// null when it covers everything.
-  final ({String entryId, bool below})? moneyEndsAt;
+  /// Row id to which side of it the cutoff line falls, one entry per cycle.
+  final Map<String, bool> moneyEndsAt;
 
   /// The sum the walk started from. Null when it is not known — an anchor
   /// income with no amount yet (spec 4.7).
@@ -840,8 +848,7 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// The day a group of records falls on (spec 4.5), and the band that opens the
-/// overdue section above them.
+/// The day a group of records falls on (spec 4.5).
 class _DayHeader extends StatelessWidget {
   const _DayHeader({
     required this.header,
@@ -859,8 +866,7 @@ class _DayHeader extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
-    final CalendarDate? date = header.date;
-    final bool isToday = date == today;
+    final bool isToday = header.date == today;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         SageSpace.gutter,
@@ -869,15 +875,11 @@ class _DayHeader extends StatelessWidget {
         SageSpace.xs,
       ),
       child: Text(
-        header.isOverdue
-            ? tr('feed.overdue')
-            : (isToday
-                  ? tr('feed.today')
-                  : dates.dayMonth(date!, reference: today)),
+        isToday
+            ? tr('feed.today')
+            : dates.dayMonth(header.date, reference: today),
         style: text.labelMedium?.copyWith(
-          color: header.isOverdue
-              ? sage.danger
-              : (isToday ? sage.accentStrong : sage.inkLabel),
+          color: isToday ? sage.accentStrong : sage.inkLabel,
         ),
       ),
     );

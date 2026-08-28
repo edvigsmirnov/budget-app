@@ -127,7 +127,7 @@ class _PeriodBody extends ConsumerWidget {
           CascadeCard(
             available: ledger.anchorAmount!,
             baseRemainder: ledger.baseRemainder,
-            baseCoverage: ledger.cascade!.mandatory.coverage,
+            baseCoverage: ledger.baseCoverage,
             money: money,
           ),
         ],

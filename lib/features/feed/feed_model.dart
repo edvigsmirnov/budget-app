@@ -128,25 +128,14 @@ sealed class FeedItem {
   String get key;
 }
 
-/// "Overdue", or a date.
+/// The day a group of records falls on.
 class FeedHeader extends FeedItem {
-  const FeedHeader.day(this.date, {this.inOverdue = false}) : isOverdue = false;
-  const FeedHeader.overdue() : date = null, isOverdue = true, inOverdue = true;
+  const FeedHeader.day(this.date);
 
-  final CalendarDate? date;
-
-  /// The band that opens the overdue section.
-  final bool isOverdue;
-
-  /// A day inside that section. The same date can head a second group further
-  /// down — a day with both a missed payment and a settled one — so the key
-  /// has to say which of the two this is.
-  final bool inOverdue;
+  final CalendarDate date;
 
   @override
-  String get key => isOverdue
-      ? 'header:overdue'
-      : 'header:${inOverdue ? 'overdue:' : ''}${date!.toIso()}';
+  String get key => 'header:${date.toIso()}';
 }
 
 class FeedRow extends FeedItem {
@@ -162,58 +151,39 @@ class FeedRow extends FeedItem {
 }
 
 /// The line between what the money covers and what it does not (spec 4.9).
+///
+/// Keyed by the row it hangs off, because there is one per cycle: the list runs
+/// through many, and each says for itself where its own money ran out.
 class FeedCutoff extends FeedItem {
-  const FeedCutoff(this.date);
+  const FeedCutoff(this.date, this.entryId);
 
   final CalendarDate date;
+  final String entryId;
 
   @override
-  String get key => 'cutoff';
+  String get key => 'cutoff:$entryId';
 }
 
 /// Flattens records into the list the Feed draws.
 ///
-/// Overdue rows are lifted into their own section at the top and stay there
-/// until they are marked paid (spec 4.5); everything else runs in date order.
+/// Strictly chronological. An overdue payment stays on the day it was due —
+/// lifting the late ones into a section of their own moved them away from the
+/// dates that explain them, and the row already says it is late by drawing
+/// itself in red (spec 4.5). What is owed in total is the chip above the list.
 List<FeedItem> buildFeedItems({
   required List<FeedRecord> records,
-  required CalendarDate today,
   required FeedOrderMode orderMode,
   Map<String, bool> coverage = const <String, bool>{},
-  ({String entryId, bool below})? moneyEndsAt,
-}) {
-  final List<FeedRecord> overdue = <FeedRecord>[];
-  final Map<String, List<FeedRecord>> byDay = <String, List<FeedRecord>>{};
 
+  /// Row id to which side of it the cutoff line falls on, one entry per cycle.
+  Map<String, bool> moneyEndsAt = const <String, bool>{},
+}) {
+  final Map<String, List<FeedRecord>> byDay = <String, List<FeedRecord>>{};
   for (final FeedRecord r in records) {
-    if (r.isOverdue(today)) {
-      overdue.add(r);
-      continue;
-    }
     byDay.putIfAbsent(r.date.toIso(), () => <FeedRecord>[]).add(r);
   }
 
   final List<FeedItem> items = <FeedItem>[];
-
-  if (overdue.isNotEmpty) {
-    overdue.sort((FeedRecord a, FeedRecord b) {
-      final int byDate = a.date.compareTo(b.date);
-      return byDate != 0 ? byDate : compareInDay(a, b, orderMode);
-    });
-    items.add(const FeedHeader.overdue());
-    // Dated inside the section too. Lifted to the top, a missed payment
-    // otherwise sits under no date at all and there is nothing to say how late
-    // it is.
-    CalendarDate? lastDay;
-    for (final FeedRecord r in overdue) {
-      if (r.date != lastDay) {
-        items.add(FeedHeader.day(r.date, inOverdue: true));
-        lastDay = r.date;
-      }
-      items.add(FeedRow(r, isCovered: coverage[r.id] ?? true));
-    }
-  }
-
   final List<String> days = byDay.keys.toList()..sort();
   for (final String day in days) {
     items.add(FeedHeader.day(CalendarDate.parse(day)));
@@ -222,10 +192,10 @@ List<FeedItem> buildFeedItems({
     for (final FeedRecord r in rows) {
       // Above the row when the money could not pay it, below when it paid it
       // and stopped there (spec 4.9, and the zero rule over it).
-      final bool endsHere = moneyEndsAt?.entryId == r.id;
-      if (endsHere && !moneyEndsAt!.below) items.add(FeedCutoff(r.date));
+      final bool? below = moneyEndsAt[r.id];
+      if (below == false) items.add(FeedCutoff(r.date, r.id));
       items.add(FeedRow(r, isCovered: coverage[r.id] ?? true));
-      if (endsHere && moneyEndsAt!.below) items.add(FeedCutoff(r.date));
+      if (below == true) items.add(FeedCutoff(r.date, r.id));
     }
   }
 

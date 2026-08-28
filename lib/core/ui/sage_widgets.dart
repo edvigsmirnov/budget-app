@@ -174,11 +174,14 @@ class CoverageDot extends StatelessWidget {
   final Coverage coverage;
   final double size;
 
-  static Color colorOf(BuildContext context, Coverage coverage) =>
+  /// Neutral when there is no verdict: a figure nothing was judged against
+  /// must not borrow the colour of one that was.
+  static Color colorOf(BuildContext context, Coverage? coverage) =>
       switch (coverage) {
         Coverage.covered => context.sage.accentStrong,
         Coverage.exact => context.sage.warningAccent,
         Coverage.short => context.sage.danger,
+        null => context.sage.ink,
       };
 
   @override

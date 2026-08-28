@@ -107,7 +107,12 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
         startDate: repos.spaces.clockFor(space).today(),
       );
       await ref.read(currentSpaceIdProvider.notifier).select(space.id);
-      if (mounted && !widget.isFirstSpace) Navigator.of(context).pop();
+      // All the way back to the shell, not one step. The form can be reached
+      // from Settings, and returning there after making a Space leaves the
+      // user two screens away from the thing they just created.
+      if (mounted && !widget.isFirstSpace) {
+        Navigator.of(context).popUntil((Route<void> r) => r.isFirst);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

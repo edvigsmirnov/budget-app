@@ -79,13 +79,12 @@ ReorderOutcome resolveReorder({
   return ReorderWithinDay(ordered);
 }
 
-/// The day a drop position belongs to. Null inside the overdue section, which
-/// spans several dates and so names no single day — a drop there is treated
-/// like any other cross-day move and opens the picker.
+/// The day a drop position belongs to: whichever date heads the group it
+/// landed in. Null above the first header, where no day has been named yet.
 CalendarDate? _dayAt(List<FeedItem> items, int insertAt) {
   for (int i = insertAt - 1; i >= 0; i--) {
     final FeedItem item = items[i];
-    if (item is FeedHeader) return item.isOverdue ? null : item.date;
+    if (item is FeedHeader) return item.date;
   }
   return null;
 }

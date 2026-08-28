@@ -31,6 +31,17 @@ Future<void> showQuickAddMenu(
     context: context,
     position: _anchorOn(context, anchorKey),
     color: context.sage.card,
+    // Material's default is a half-second grow from the top of the screen. The
+    // menu belongs to the button under it, so it opens from there and it opens
+    // at the speed the rest of the app moves at.
+    popUpAnimationStyle: const AnimationStyle(
+      duration: Duration(milliseconds: 140),
+      reverseDuration: Duration(milliseconds: 100),
+      curve: Curves.easeOutCubic,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(SageRadius.card),
+    ),
     items: <PopupMenuEntry<_QuickAdd>>[
       PopupMenuItem<_QuickAdd>(
         value: _QuickAdd.payment,
@@ -67,21 +78,29 @@ Future<void> showQuickAddMenu(
   }
 }
 
-/// The rectangle a popup opens from: the anchor widget's own bounds, in
-/// overlay coordinates. The menu flips above the button on its own when there
-/// is no room below, which at the bottom of the screen is always.
+/// The rectangle a popup opens from: the strip just above the anchor, in
+/// overlay coordinates.
+///
+/// Anchoring on the button's own bounds let Material choose to grow downwards
+/// off the bottom of the screen and then correct itself. Naming the space above
+/// the button as the target means it only ever grows up, out of the button.
 RelativeRect _anchorOn(BuildContext context, GlobalKey anchorKey) {
   final RenderBox overlay =
       Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
   final RenderBox? box =
       anchorKey.currentContext?.findRenderObject() as RenderBox?;
   if (box == null) return RelativeRect.fill;
-  return RelativeRect.fromRect(
-    Rect.fromPoints(
-      box.localToGlobal(Offset.zero, ancestor: overlay),
-      box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
-    ),
-    Offset.zero & overlay.size,
+
+  final Offset topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
+  final Offset bottomRight = box.localToGlobal(
+    box.size.bottomRight(Offset.zero),
+    ancestor: overlay,
+  );
+  return RelativeRect.fromLTRB(
+    topLeft.dx,
+    0,
+    overlay.size.width - bottomRight.dx,
+    overlay.size.height - topLeft.dy + SageSpace.sm,
   );
 }
 

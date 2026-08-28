@@ -39,68 +39,45 @@ List<String> keysOf(List<FeedItem> items) =>
 void main() {
   final CalendarDate today = d('2026-03-10');
 
-  group('overdue section', () {
-    test('unpaid past expenses are lifted to the top', () {
+  group('late records stay on their own day', () {
+    // The Feed is strictly chronological. A missed payment is marked, not
+    // moved: lifting it out separated it from the date that explains it.
+    test('an unpaid past expense keeps its place in the list', () {
       final List<FeedItem> items = buildFeedItems(
         records: <FeedRecord>[
           expense('later', '2026-03-20'),
           expense('missed', '2026-03-01'),
         ],
-        today: today,
-        orderMode: FeedOrderMode.grouped,
-      );
-      expect(keysOf(items).first, 'header:overdue');
-      // Dated inside the section, so a missed payment says how late it is.
-      expect(keysOf(items)[1], 'header:overdue:2026-03-01');
-      expect(keysOf(items)[2], 'row:missed');
-    });
-
-    test('a day heading the overdue section keys apart from its own group', () {
-      // The same date can appear twice: once for what was missed, once for
-      // what was settled on it.
-      final List<FeedItem> items = buildFeedItems(
-        records: <FeedRecord>[
-          expense('missed', '2026-03-01'),
-          expense('rent', '2026-03-01', isPaid: true),
-        ],
-        today: today,
         orderMode: FeedOrderMode.grouped,
       );
       expect(keysOf(items), <String>[
-        'header:overdue',
-        'header:overdue:2026-03-01',
-        'row:missed',
         'header:2026-03-01',
+        'row:missed',
+        'header:2026-03-20',
+        'row:later',
+      ]);
+    });
+
+    test('a missed and a settled payment share one day heading', () {
+      final List<FeedItem> items = buildFeedItems(
+        records: <FeedRecord>[
+          expense('missed', '2026-03-01', sortOrder: 0),
+          expense('rent', '2026-03-01', isPaid: true, sortOrder: 1024),
+        ],
+        orderMode: FeedOrderMode.free,
+      );
+      expect(keysOf(items), <String>[
+        'header:2026-03-01',
+        'row:missed',
         'row:rent',
       ]);
     });
 
-    test('a paid past expense stays in its day', () {
-      final List<FeedItem> items = buildFeedItems(
-        records: <FeedRecord>[expense('rent', '2026-03-01', isPaid: true)],
-        today: today,
-        orderMode: FeedOrderMode.grouped,
-      );
-      expect(keysOf(items), <String>['header:2026-03-01', 'row:rent']);
-    });
-
-    test('an unreceived income in the past is late, not overdue', () {
+    test('a record still knows it is overdue', () {
+      expect(expense('missed', '2026-03-01').isOverdue(today), isTrue);
+      expect(expense('due', '2026-03-10').isOverdue(today), isFalse);
       // No money was missed; nothing is owed to anyone.
-      final List<FeedItem> items = buildFeedItems(
-        records: <FeedRecord>[income('salary', '2026-03-01')],
-        today: today,
-        orderMode: FeedOrderMode.grouped,
-      );
-      expect(keysOf(items).first, 'header:2026-03-01');
-    });
-
-    test('an expense due today is not overdue', () {
-      final List<FeedItem> items = buildFeedItems(
-        records: <FeedRecord>[expense('due', '2026-03-10')],
-        today: today,
-        orderMode: FeedOrderMode.grouped,
-      );
-      expect(keysOf(items).first, 'header:2026-03-10');
+      expect(income('salary', '2026-03-01').isOverdue(today), isFalse);
     });
   });
 
@@ -114,7 +91,6 @@ void main() {
     test('grouped puts incomes, then mandatory, then variable', () {
       final List<FeedItem> items = buildFeedItems(
         records: day,
-        today: today,
         orderMode: FeedOrderMode.grouped,
       );
       expect(keysOf(items), <String>[
@@ -128,7 +104,6 @@ void main() {
     test('free follows sort_order alone', () {
       final List<FeedItem> items = buildFeedItems(
         records: day,
-        today: today,
         orderMode: FeedOrderMode.free,
       );
       expect(keysOf(items), <String>[
@@ -146,20 +121,13 @@ void main() {
         expense('a', '2026-03-15'),
       ];
       expect(
-        keysOf(
-          buildFeedItems(
-            records: tied,
-            today: today,
-            orderMode: FeedOrderMode.free,
-          ),
-        ),
+        keysOf(buildFeedItems(records: tied, orderMode: FeedOrderMode.free)),
         <String>['header:2026-03-15', 'row:a', 'row:b'],
       );
       expect(
         keysOf(
           buildFeedItems(
             records: tied.reversed.toList(),
-            today: today,
             orderMode: FeedOrderMode.free,
           ),
         ),
@@ -175,15 +143,14 @@ void main() {
           expense('covered', '2026-03-15', sortOrder: 0),
           expense('short', '2026-03-15', sortOrder: 1024),
         ],
-        today: today,
         orderMode: FeedOrderMode.free,
         coverage: <String, bool>{'covered': true, 'short': false},
-        moneyEndsAt: (entryId: 'short', below: false),
+        moneyEndsAt: <String, bool>{'short': false},
       );
       expect(keysOf(items), <String>[
         'header:2026-03-15',
         'row:covered',
-        'cutoff',
+        'cutoff:short',
         'row:short',
       ]);
     });
@@ -194,14 +161,13 @@ void main() {
           expense('last', '2026-03-15', sortOrder: 0),
           expense('after', '2026-03-15', sortOrder: 1024),
         ],
-        today: today,
         orderMode: FeedOrderMode.free,
-        moneyEndsAt: (entryId: 'last', below: true),
+        moneyEndsAt: <String, bool>{'last': true},
       );
       expect(keysOf(items), <String>[
         'header:2026-03-15',
         'row:last',
-        'cutoff',
+        'cutoff:last',
         'row:after',
       ]);
     });
@@ -209,7 +175,6 @@ void main() {
     test('no cutoff id means no line', () {
       final List<FeedItem> items = buildFeedItems(
         records: <FeedRecord>[expense('a', '2026-03-15')],
-        today: today,
         orderMode: FeedOrderMode.free,
       );
       expect(items.whereType<FeedCutoff>(), isEmpty);
@@ -223,11 +188,10 @@ void main() {
         expense('a', '2026-03-12'),
         expense('b', '2026-03-20'),
       ],
-      today: today,
       orderMode: FeedOrderMode.free,
     );
     expect(
-      items.whereType<FeedHeader>().map((FeedHeader h) => h.date!.toIso()),
+      items.whereType<FeedHeader>().map((FeedHeader h) => h.date.toIso()),
       <String>['2026-03-12', '2026-03-20', '2026-04-01'],
     );
   });
@@ -236,7 +200,6 @@ void main() {
     expect(
       buildFeedItems(
         records: const <FeedRecord>[],
-        today: today,
         orderMode: FeedOrderMode.grouped,
       ),
       isEmpty,

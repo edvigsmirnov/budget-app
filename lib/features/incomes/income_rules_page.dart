@@ -44,8 +44,10 @@ class IncomeRulesPage extends ConsumerWidget {
           value: final List<IncomeRecurrenceRule> rows,
         ) =>
           ListView.separated(
+            padding: const EdgeInsets.all(SageSpace.gutter),
             itemCount: rows.length,
-            separatorBuilder: (BuildContext _, int _) => const Hairline(),
+            separatorBuilder: (BuildContext _, int _) =>
+                const SizedBox(height: SageSpace.sm),
             itemBuilder: (BuildContext context, int index) => _RuleTile(
               rule: rows[index],
               money: money,
@@ -129,6 +131,12 @@ final StreamProvider<List<IncomeRecurrenceRule>> incomeRulesProvider =
       return ref.watch(repositoriesProvider).incomeRules.watchInSpace(space.id);
     });
 
+/// One regular income, as a card.
+///
+/// A Space has a handful of these, not a hundred, so the screen spends the room
+/// it has: the title reads at body size, the schedule and the amount sit under
+/// it, and each sits in its own softly outlined block rather than in a run of
+/// list rows separated by hairlines.
 class _RuleTile extends StatelessWidget {
   const _RuleTile({
     required this.rule,
@@ -147,60 +155,104 @@ class _RuleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return ListTile(
+    final TextTheme text = Theme.of(context).textTheme;
+    final bool anchored = isIncomeDriven && rule.isAnchor;
+
+    return SageCard(
       // The rule is what a regular income really is, so tapping it edits the
       // whole series rather than one month of it (spec 5.4).
       onTap: () => openIncomeRuleForm(context, rule: rule),
-      title: Row(
-        children: <Widget>[
-          Flexible(child: Text(rule.title, overflow: TextOverflow.ellipsis)),
-          if (isIncomeDriven && rule.isAnchor) ...<Widget>[
-            const SizedBox(width: SageSpace.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: sage.accentTint,
-                borderRadius: BorderRadius.circular(SageRadius.pill),
-              ),
-              child: Text(
-                tr('income.anchorBadge'),
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: sage.accentStrong),
-              ),
-            ),
-          ],
-        ],
+      padding: const EdgeInsets.fromLTRB(
+        SageSpace.lg,
+        SageSpace.md,
+        SageSpace.sm,
+        SageSpace.md,
       ),
-      subtitle: Text(
-        <String>[
-          scheduleSummary(rule),
-          if (rule.amount != null)
-            money.format(rule.amount!)
-          else
-            tr('income.amountUnknown'),
-        ].join(' · '),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: <Widget>[
-          if (isIncomeDriven)
-            IconButton(
-              tooltip: rule.isAnchor
-                  ? tr('income.makeAdditional')
-                  : tr('income.makeAnchor'),
-              icon: Icon(
-                rule.isAnchor ? Icons.push_pin : Icons.push_pin_outlined,
-                size: 20,
-                color: rule.isAnchor ? sage.accentStrong : sage.inkLabel,
-              ),
-              onPressed: () => onToggleAnchor(!rule.isAnchor),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(
+                        rule.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.titleSmall,
+                      ),
+                    ),
+                    if (anchored) ...<Widget>[
+                      const SizedBox(width: SageSpace.sm),
+                      _AnchorBadge(),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: SageSpace.xs),
+                Text(
+                  rule.amount != null
+                      ? money.format(rule.amount!)
+                      : tr('income.amountUnknown'),
+                  style: text.bodyLarge?.copyWith(
+                    color: sage.accentStrong,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  scheduleSummary(rule),
+                  style: text.bodySmall?.copyWith(color: sage.inkLabel),
+                ),
+              ],
             ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20),
-            tooltip: tr('common.delete'),
-            onPressed: onDelete,
+          ),
+          Column(
+            children: <Widget>[
+              if (isIncomeDriven)
+                IconButton(
+                  tooltip: rule.isAnchor
+                      ? tr('income.makeAdditional')
+                      : tr('income.makeAnchor'),
+                  icon: Icon(
+                    rule.isAnchor ? Icons.push_pin : Icons.push_pin_outlined,
+                    size: 20,
+                    color: rule.isAnchor ? sage.accentStrong : sage.inkLabel,
+                  ),
+                  onPressed: () => onToggleAnchor(!rule.isAnchor),
+                ),
+              IconButton(
+                icon: Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: sage.inkLabel,
+                ),
+                tooltip: tr('common.delete'),
+                onPressed: onDelete,
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// What marks the income the cycle boundaries are computed from (spec 4.7).
+class _AnchorBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: sage.accentTint,
+        borderRadius: BorderRadius.circular(SageRadius.pill),
+      ),
+      child: Text(
+        tr('income.anchorBadge'),
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(color: sage.accentStrong),
       ),
     );
   }

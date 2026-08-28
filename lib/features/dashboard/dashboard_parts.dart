@@ -170,7 +170,11 @@ class CascadeCard extends StatefulWidget {
   final Decimal available;
 
   final Decimal? baseRemainder;
-  final Coverage baseCoverage;
+
+  /// Null when the cycle is not judged — no income and nothing owed. The
+  /// remainder is then a plain figure rather than a verdict.
+  final Coverage? baseCoverage;
+
   final MoneyFormat money;
 
   @override
@@ -284,7 +288,7 @@ class _RemainderBar extends StatelessWidget {
 
   final Decimal available;
   final Decimal? remainder;
-  final Coverage coverage;
+  final Coverage? coverage;
 
   @override
   Widget build(BuildContext context) {

@@ -38,6 +38,8 @@ class PeriodLedger {
     required this.totalPaid,
     required this.nearestIncome,
     required this.unknownIncomeCount,
+    required this.hasIncome,
+    required this.hasUnpaidExpense,
   });
 
   final BudgetPeriod period;
@@ -65,26 +67,53 @@ class PeriodLedger {
   /// nothing. Reported rather than silently ignored (spec 4.7).
   final int unknownIncomeCount;
 
+  /// Whether any income at all is recorded against this cycle.
+  final bool hasIncome;
+
+  /// Whether anything in it is still owed.
+  final bool hasUnpaidExpense;
+
   bool get isComputable => cascade != null;
+
+  /// Whether the walk's verdict says anything about this cycle.
+  ///
+  /// A cycle with no income and nothing outstanding is not overspent: the
+  /// money already moved, and there was no figure it was meant to come out of.
+  /// The remainder is still arithmetic and still shown — it is simply not
+  /// judged, so no dot, no cutoff and no date the money runs out on.
+  bool get isJudged => hasIncome || hasUnpaidExpense;
 
   Decimal get totalRemaining => totalPlanned - totalPaid;
 
-  Coverage? get coverage => cascade?.coverage;
+  Coverage? get coverage => isJudged ? cascade?.coverage : null;
 
   /// Money left once everything planned is covered; null when it is not, or
-  /// when the anchor amount is unknown.
-  Decimal? get freeCash => cascade?.all.freeCash;
+  /// when the anchor amount is unknown. An unjudged cycle reports the plain
+  /// remainder instead, which is a fact rather than a forecast.
+  Decimal? get freeCash =>
+      isJudged ? cascade?.all.freeCash : cascade?.all.finalBalance;
 
   /// After the mandatory payments alone (spec 4.4).
-  Decimal? get baseRemainder => cascade?.mandatory.freeCash;
+  Decimal? get baseRemainder =>
+      isJudged ? cascade?.mandatory.freeCash : cascade?.mandatory.finalBalance;
+
+  /// After the mandatory payments alone, as a verdict.
+  Coverage? get baseCoverage => isJudged ? cascade?.mandatory.coverage : null;
 
   /// The last day the money reaches, when it does not reach the whole period.
-  CalendarDate? get lastCoveredDay => cascade?.lastCoveredDay;
+  CalendarDate? get lastCoveredDay => isJudged ? cascade?.lastCoveredDay : null;
 
-  Map<String, bool> get coverageByEntry => <String, bool>{
-    for (final LedgerStep step in cascade?.all.steps ?? const <LedgerStep>[])
-      step.entry.id: step.isCovered,
-  };
+  /// Where this cycle's money runs out, for the line in the Feed.
+  ({String entryId, bool below})? get moneyEndsAt =>
+      isJudged ? cascade?.moneyEndsAt : null;
+
+  Map<String, bool> get coverageByEntry => !isJudged
+      ? const <String, bool>{}
+      : <String, bool>{
+          for (final LedgerStep step
+              in cascade?.all.steps ?? const <LedgerStep>[])
+            step.entry.id: step.isCovered,
+        };
 }
 
 /// Builds the figures for one period from its records.
@@ -193,6 +222,8 @@ PeriodLedger buildPeriodLedger({
     totalPaid: paid,
     nearestIncome: nearest,
     unknownIncomeCount: unknown + (anchorUnknown && anchorKnown ? 1 : 0),
+    hasIncome: inflows.isNotEmpty,
+    hasUnpaidExpense: ofPeriod.any((Payment p) => !p.isPaid),
   );
 }
 
@@ -247,14 +278,15 @@ final Provider<BudgetPeriod?> selectedPeriodProvider = Provider<BudgetPeriod?>((
   return periods.first;
 });
 
-/// The figures for the selected period.
-final Provider<AsyncValue<PeriodLedger>> periodLedgerProvider =
-    Provider<AsyncValue<PeriodLedger>>((Ref ref) {
+/// Every cycle's figures, oldest first.
+///
+/// Deliberately blind to which period is selected: the Feed draws each cycle's
+/// own coverage and its own cutoff line, so scrolling from one into the next
+/// must not recompute — or redraw — the list under the finger.
+final Provider<AsyncValue<List<PeriodLedger>>> periodLedgersProvider =
+    Provider<AsyncValue<List<PeriodLedger>>>((Ref ref) {
       // Periods have to exist before they can be shown.
       ref.watch(periodRefreshProvider);
-
-      final BudgetPeriod? period = ref.watch(selectedPeriodProvider);
-      if (period == null) return const AsyncValue<PeriodLedger>.loading();
 
       final AsyncValue<List<Payment>> payments = ref.watch(
         spacePaymentsProvider,
@@ -266,26 +298,54 @@ final Provider<AsyncValue<PeriodLedger>> periodLedgerProvider =
 
       final Object? error = payments.error ?? incomes.error ?? rules.error;
       if (error != null) {
-        return AsyncValue<PeriodLedger>.error(error, StackTrace.current);
+        return AsyncValue<List<PeriodLedger>>.error(error, StackTrace.current);
       }
 
       final List<Payment>? paymentRows = payments.value;
       final List<Income>? incomeRows = incomes.value;
       final List<IncomeRecurrenceRule>? ruleRows = rules.value;
       if (paymentRows == null || incomeRows == null || ruleRows == null) {
-        return const AsyncValue<PeriodLedger>.loading();
+        return const AsyncValue<List<PeriodLedger>>.loading();
       }
 
-      return AsyncValue<PeriodLedger>.data(
-        buildPeriodLedger(
-          period: period,
-          payments: paymentRows,
-          incomes: incomeRows,
-          anchorRuleIds: <String>{
-            for (final IncomeRecurrenceRule r in ruleRows)
-              if (r.isAnchor) r.id,
-          },
-          today: ref.watch(spaceClockProvider).today(),
-        ),
+      final Set<String> anchors = <String>{
+        for (final IncomeRecurrenceRule r in ruleRows)
+          if (r.isAnchor) r.id,
+      };
+      final CalendarDate today = ref.watch(spaceClockProvider).today();
+
+      return AsyncValue<List<PeriodLedger>>.data(<PeriodLedger>[
+        for (final BudgetPeriod period in ref.watch(incomePeriodsProvider))
+          buildPeriodLedger(
+            period: period,
+            payments: paymentRows,
+            incomes: incomeRows,
+            anchorRuleIds: anchors,
+            today: today,
+          ),
+      ]);
+    });
+
+/// The figures for the selected period, picked out of the set above.
+final Provider<AsyncValue<PeriodLedger>> periodLedgerProvider =
+    Provider<AsyncValue<PeriodLedger>>((Ref ref) {
+      final BudgetPeriod? period = ref.watch(selectedPeriodProvider);
+      if (period == null) return const AsyncValue<PeriodLedger>.loading();
+
+      final AsyncValue<List<PeriodLedger>> all = ref.watch(
+        periodLedgersProvider,
       );
+      final Object? error = all.error;
+      if (error != null) {
+        return AsyncValue<PeriodLedger>.error(error, StackTrace.current);
+      }
+      final List<PeriodLedger>? ledgers = all.value;
+      if (ledgers == null) return const AsyncValue<PeriodLedger>.loading();
+
+      for (final PeriodLedger ledger in ledgers) {
+        if (ledger.period.id == period.id) {
+          return AsyncValue<PeriodLedger>.data(ledger);
+        }
+      }
+      return const AsyncValue<PeriodLedger>.loading();
     });
