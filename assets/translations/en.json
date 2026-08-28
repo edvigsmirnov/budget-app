@@ -71,7 +71,7 @@
     "firstTitle": "Create your first Space",
     "firstBody": "A Space holds one budget. Separate ones keep separate things apart — a household, a trip, freelance work.",
     "fieldTitle": "Name",
-    "titleHint": "Family budget",
+    "titleHint": "Family, Trip, Freelance…",
     "fieldMode": "Type",
     "modeIsPermanent": "Chosen once. The three types compute money differently, so a Space keeps the one it was created with.",
     "fieldCurrency": "Currency",
