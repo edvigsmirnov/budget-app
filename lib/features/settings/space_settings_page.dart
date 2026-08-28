@@ -11,6 +11,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
+import 'package:sielto/features/spaces/space_avatar.dart';
 
 /// Settings for one Space (spec 3.4).
 ///
@@ -85,7 +86,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           // design opens the screen (design section 3.4).
           Row(
             children: <Widget>[
-              _SpaceMark(spaceId: space.id, title: space.title),
+              SpaceAvatar(spaceId: space.id, title: space.title, size: 48),
               const SizedBox(width: SageSpace.md),
               Expanded(
                 child: TextField(
@@ -227,40 +228,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         .setArchived(space.id, isArchived: true);
     await ref.read(currentSpaceIdProvider.notifier).select(null);
     if (mounted) Navigator.of(context).pop();
-  }
-}
-
-/// The Space's mark: its initial on a soft square.
-///
-/// The design shows a chosen icon here; that needs a column the schema does
-/// not have yet, so the initial stands in rather than an empty placeholder.
-class _SpaceMark extends StatelessWidget {
-  const _SpaceMark({required this.spaceId, required this.title});
-
-  final String spaceId;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    final String initial = title.trim().isEmpty
-        ? '?'
-        : title.trim().characters.first.toUpperCase();
-
-    return Container(
-      width: 48,
-      height: 48,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: sage.accentTintAlt,
-        borderRadius: BorderRadius.circular(SageRadius.card),
-      ),
-      child: Text(
-        initial,
-        style: Theme.of(context).textTheme.titleMedium
-            ?.copyWith(color: sage.accentStrong),
-      ),
-    );
   }
 }
 

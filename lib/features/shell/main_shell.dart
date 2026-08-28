@@ -1,5 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
@@ -10,14 +12,14 @@ import 'package:sielto/features/feed/feed_page.dart';
 ///
 /// Settings is deliberately not a fourth tab — it is reached from the header
 /// (spec 4.2).
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   final PageController _controller = PageController();
   int _index = 0;
 
@@ -36,8 +38,30 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  /// A newly opened Space starts on its Dashboard.
+  ///
+  /// The shell outlives the Space, so without this a switch lands on whichever
+  /// tab the previous Space was left on — and a Space created from the Feed
+  /// opened straight into an empty Feed.
+  void _resetOnSpaceChange() {
+    ref.listen<String?>(currentSpaceIdProvider, (
+      String? previous,
+      String? next,
+    ) {
+      if (previous == next || _index == 0) return;
+      // Jumped, not animated: a switch is a change of subject, and after a
+      // frame, because the notification can arrive mid-build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _index = 0);
+        if (_controller.hasClients) _controller.jumpToPage(0);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    _resetOnSpaceChange();
     return Scaffold(
       backgroundColor: context.sage.surface,
       body: PageView(

@@ -51,6 +51,9 @@ Future<bool> confirmMandatory(BuildContext context) => confirmDialog(
   confirmLabel: tr('common.continue'),
 );
 
+/// How long a delete stays reversible.
+const Duration undoWindow = Duration(seconds: 5);
+
 /// The undo window after a soft delete (spec 7).
 ///
 /// The delete has already happened when this appears — the snackbar only
@@ -61,13 +64,92 @@ void showUndoSnackbar(
   required String message,
   required VoidCallback onUndo,
 }) {
-  ScaffoldMessenger.of(context)
+  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+  messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 6),
-        action: SnackBarAction(label: tr('common.undo'), onPressed: onUndo),
+        duration: undoWindow,
+        // The action slot takes a plain label and nothing else, so the button
+        // lives in the content row instead.
+        content: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: SageSpace.sm),
+            _UndoCountdown(
+              onUndo: () {
+                messenger.hideCurrentSnackBar();
+                onUndo();
+              },
+            ),
+          ],
+        ),
       ),
     );
+}
+
+/// The undo button, wrapped in a ring that empties as the window closes.
+///
+/// A bare snackbar gives no sense of how long is left; the ring is the timer
+/// made visible, and it drains rather than fills because what it counts is
+/// what remains.
+class _UndoCountdown extends StatefulWidget {
+  const _UndoCountdown({required this.onUndo});
+
+  final VoidCallback onUndo;
+
+  @override
+  State<_UndoCountdown> createState() => _UndoCountdownState();
+}
+
+class _UndoCountdownState extends State<_UndoCountdown>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: undoWindow,
+  )..reverse(from: 1);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color ink =
+        Theme.of(context).snackBarTheme.actionTextColor ??
+        context.sage.accentStrong;
+    return TextButton(
+      onPressed: widget.onUndo,
+      style: TextButton.styleFrom(foregroundColor: ink),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (BuildContext context, Widget? _) =>
+                  CircularProgressIndicator(
+                    value: _controller.value,
+                    strokeWidth: 2,
+                    color: ink,
+                    backgroundColor: ink.withValues(alpha: 0.2),
+                  ),
+            ),
+          ),
+          const SizedBox(width: SageSpace.sm),
+          Text(tr('common.undo')),
+        ],
+      ),
+    );
+  }
 }

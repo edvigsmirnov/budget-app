@@ -24,9 +24,17 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
   final PreferredSizeWidget? bottom;
 
+  /// Taller than the Material default. The bar carries nothing but the two
+  /// controls and the Space name, and at 56 they sit against the status bar
+  /// with the whole row reading as an afterthought.
+  static const double _toolbarHeight = 68;
+
+  /// The control, plus the room it needs on either side.
+  static const double _controlSize = 44;
+
   @override
   Size get preferredSize =>
-      Size.fromHeight(kToolbarHeight + (bottom?.preferredSize.height ?? 0));
+      Size.fromHeight(_toolbarHeight + (bottom?.preferredSize.height ?? 0));
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,9 +43,11 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
       backgroundColor: sage.surface,
       titleSpacing: 0,
       centerTitle: true,
-      leadingWidth: 60,
+      toolbarHeight: _toolbarHeight,
+      leadingWidth: _controlSize + SageSpace.md * 2,
       leading: Center(
         child: _ProfileAvatar(
+          size: _controlSize,
           initial: ref.watch(profileInitialProvider),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -78,6 +88,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         Padding(
           padding: const EdgeInsets.only(right: SageSpace.md),
           child: SoftIconButton(
+            size: _controlSize,
             icon: Icons.settings_outlined,
             tooltip: tr('spaceSettings.title'),
             onTap: () => Navigator.of(context).push(
@@ -97,10 +108,15 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 /// The user, as the initial of their nickname on a sage disc (design
 /// section 2). An unnamed user gets the dot rather than a stray letter.
 class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({required this.initial, required this.onTap});
+  const _ProfileAvatar({
+    required this.initial,
+    required this.onTap,
+    required this.size,
+  });
 
   final String? initial;
   final VoidCallback onTap;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -111,18 +127,22 @@ class _ProfileAvatar extends StatelessWidget {
       child: Tooltip(
         message: tr('settings.title'),
         child: Container(
-          width: 36,
-          height: 36,
+          width: size,
+          height: size,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: sage.accentTintAlt,
             shape: BoxShape.circle,
           ),
           child: initial == null
-              ? Icon(Icons.person_outline, size: 18, color: sage.accentStrong)
+              ? Icon(
+                  Icons.person_outline,
+                  size: size / 2,
+                  color: sage.accentStrong,
+                )
               : Text(
                   initial!,
-                  style: Theme.of(context).textTheme.titleSmall
+                  style: Theme.of(context).textTheme.titleMedium
                       ?.copyWith(color: sage.accentStrong),
                 ),
         ),

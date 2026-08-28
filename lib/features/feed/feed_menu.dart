@@ -10,7 +10,13 @@ import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 
+enum _QuickAdd { payment, income, nonWorkingDay }
+
 /// The FAB menu (spec 6.5).
+///
+/// A bubble beside the button rather than a sheet over the list: three short
+/// items do not need half the screen, and the menu stays attached to the thing
+/// that opened it.
 ///
 /// The third item marks a non-working day. It is here as well as in Settings
 /// because that is where the user already is when they notice a day is wrong
@@ -19,41 +25,84 @@ Future<void> showQuickAddMenu(
   BuildContext context,
   WidgetRef ref, {
   required CalendarDate today,
-}) => showModalBottomSheet<void>(
-  context: context,
-  builder: (BuildContext sheetContext) => SafeArea(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        ListTile(
-          leading: const Icon(Icons.remove_circle_outline),
-          title: Text(tr('payment.add')),
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            openPaymentForm(context, date: today);
-          },
+  required GlobalKey anchorKey,
+}) async {
+  final _QuickAdd? choice = await showMenu<_QuickAdd>(
+    context: context,
+    position: _anchorOn(context, anchorKey),
+    color: context.sage.card,
+    items: <PopupMenuEntry<_QuickAdd>>[
+      PopupMenuItem<_QuickAdd>(
+        value: _QuickAdd.payment,
+        child: _MenuLine(
+          icon: Icons.remove_circle_outline,
+          label: tr('payment.add'),
         ),
-        ListTile(
-          leading: const Icon(Icons.add_circle_outline),
-          title: Text(tr('income.add')),
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            openIncomeForm(context, date: today);
-          },
+      ),
+      PopupMenuItem<_QuickAdd>(
+        value: _QuickAdd.income,
+        child: _MenuLine(
+          icon: Icons.add_circle_outline,
+          label: tr('income.add'),
         ),
-        ListTile(
-          leading: const Icon(Icons.event_busy_outlined),
-          title: Text(tr('holidays.markDay')),
-          subtitle: Text(tr('holidays.markDayHint')),
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            markNonWorkingDay(context, ref, initial: today);
-          },
+      ),
+      PopupMenuItem<_QuickAdd>(
+        value: _QuickAdd.nonWorkingDay,
+        child: _MenuLine(
+          icon: Icons.event_busy_outlined,
+          label: tr('holidays.markDay'),
         ),
-      ],
+      ),
+    ],
+  );
+  if (choice == null || !context.mounted) return;
+
+  switch (choice) {
+    case _QuickAdd.payment:
+      await openPaymentForm(context, date: today);
+    case _QuickAdd.income:
+      await openIncomeForm(context, date: today);
+    case _QuickAdd.nonWorkingDay:
+      await markNonWorkingDay(context, ref, initial: today);
+  }
+}
+
+/// The rectangle a popup opens from: the anchor widget's own bounds, in
+/// overlay coordinates. The menu flips above the button on its own when there
+/// is no room below, which at the bottom of the screen is always.
+RelativeRect _anchorOn(BuildContext context, GlobalKey anchorKey) {
+  final RenderBox overlay =
+      Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+  final RenderBox? box =
+      anchorKey.currentContext?.findRenderObject() as RenderBox?;
+  if (box == null) return RelativeRect.fill;
+  return RelativeRect.fromRect(
+    Rect.fromPoints(
+      box.localToGlobal(Offset.zero, ancestor: overlay),
+      box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
     ),
-  ),
-);
+    Offset.zero & overlay.size,
+  );
+}
+
+/// One row of a popup menu: a glyph and a label, the same pairing the sheets
+/// use so the two menus read alike.
+class _MenuLine extends StatelessWidget {
+  const _MenuLine({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Icon(icon, size: 20, color: context.sage.inkSecondary),
+      const SizedBox(width: SageSpace.md),
+      Text(label, style: Theme.of(context).textTheme.bodyLarge),
+    ],
+  );
+}
 
 /// The long-press menu on an existing row (spec 6.5).
 ///

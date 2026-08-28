@@ -50,6 +50,9 @@ const double _cutoffExtent = 34;
 class _FeedPageState extends ConsumerState<FeedPage> {
   final ScrollController _scroll = ScrollController();
 
+  /// Anchors the quick-add bubble to the button that opens it.
+  final GlobalKey _addButton = GlobalKey();
+
   /// The flattened list as last built, for the scroll listener and the arrows.
   List<FeedItem> _items = const <FeedItem>[];
 
@@ -135,10 +138,16 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        key: _addButton,
         backgroundColor: context.sage.accent,
         foregroundColor: context.sage.accentOn,
         shape: const CircleBorder(),
-        onPressed: () => showQuickAddMenu(context, ref, today: source.today),
+        onPressed: () => showQuickAddMenu(
+          context,
+          ref,
+          today: source.today,
+          anchorKey: _addButton,
+        ),
         child: const Icon(Icons.add),
       ),
       body: Column(

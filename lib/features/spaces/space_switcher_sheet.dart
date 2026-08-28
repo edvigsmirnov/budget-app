@@ -9,6 +9,7 @@ import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
+import 'package:sielto/features/spaces/space_avatar.dart';
 import 'package:sielto/features/spaces/space_coverage.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
@@ -179,7 +180,7 @@ class _SpaceRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       onTap: onOpen,
-      leading: _Avatar(
+      leading: SpaceAvatar(
         spaceId: space.id,
         title: space.title,
         highlighted: isCurrent,
@@ -235,59 +236,6 @@ class _SpaceRow extends StatelessWidget {
             onTap: onSettings,
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// The disc with the Space's initial (design section 3.1).
-///
-/// The colour is derived from the id, so a Space keeps the same one for as
-/// long as it exists. It is decoration, not status: the coverage dot on the
-/// right carries the meaning, and this palette stays clear of it.
-class _Avatar extends StatelessWidget {
-  const _Avatar({
-    required this.spaceId,
-    required this.title,
-    required this.highlighted,
-  });
-
-  final String spaceId;
-  final String title;
-  final bool highlighted;
-
-  static const List<Color> _palette = <Color>[
-    Color(0xFF6F9A74),
-    Color(0xFFCB8B52),
-    Color(0xFF6E8FA8),
-    Color(0xFF8A7BA8),
-    Color(0xFF5F7D7A),
-    Color(0xFFA8748A),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    final String initial = title.trim().isEmpty
-        ? '?'
-        : title.trim().characters.first.toUpperCase();
-    final Color ground = _palette[spaceId.hashCode.abs() % _palette.length];
-
-    return Container(
-      width: 42,
-      height: 42,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: ground,
-        shape: BoxShape.circle,
-        // The open Space wears a ring rather than a different fill, so the
-        // colour stays the Space's own identity.
-        border: highlighted ? Border.all(color: sage.ink, width: 2) : null,
-      ),
-      child: Text(
-        initial,
-        style: Theme.of(context).textTheme.titleSmall
-            ?.copyWith(color: Colors.white),
       ),
     );
   }

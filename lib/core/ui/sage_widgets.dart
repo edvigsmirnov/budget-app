@@ -274,7 +274,8 @@ class SoftIconButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(SageRadius.button),
             border: Border.all(color: sage.border),
           ),
-          child: Icon(icon, size: 18, color: sage.inkSecondary),
+          // Half the box, so the glyph keeps its weight at any size.
+          child: Icon(icon, size: size / 2, color: sage.inkSecondary),
         ),
       ),
     );
