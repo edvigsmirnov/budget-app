@@ -53,6 +53,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   /// The flattened list as last built, for the scroll listener and the arrows.
   List<FeedItem> _items = const <FeedItem>[];
 
+  /// Where rows were just dropped, held until the query catches up.
+  ///
+  /// The reorder writes in one transaction, but the stream still emits a frame
+  /// or two later, and every rebuild in between draws the order the rows had
+  /// before the drag. Holding the new positions here means a dropped row stays
+  /// where it was dropped instead of flicking back.
+  Map<String, int>? _dropped;
+
   @override
   void initState() {
     super.initState();
@@ -191,6 +199,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       for (final Income i in incomes)
         if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
     ];
+    _applyDropped(records);
 
     if (space.budgetMode == BudgetMode.incomeDriven) {
       // Before the first regular income there are no cycles at all, which is a
@@ -239,6 +248,26 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       remaining: flow.totalRemaining,
       byPeriod: false,
     );
+  }
+
+  /// Overlays the order a drag just produced, and drops the overlay once the
+  /// records read back the same way.
+  ///
+  /// Clearing here rather than after the write is deliberate: the write
+  /// finishing says nothing about the stream having emitted, and the overlay is
+  /// only stale once the rows themselves agree with it.
+  void _applyDropped(List<FeedRecord> records) {
+    final Map<String, int>? dropped = _dropped;
+    if (dropped == null) return;
+
+    bool settled = true;
+    for (int i = 0; i < records.length; i++) {
+      final int? order = dropped[records[i].id];
+      if (order == null || records[i].sortOrder == order) continue;
+      records[i] = records[i].withSortOrder(order);
+      settled = false;
+    }
+    if (settled) _dropped = null;
   }
 
   /// Follows the list: the period the top visible day belongs to becomes the
@@ -361,26 +390,24 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           isOverdue: record.isOverdue(today),
           onLongPress: () =>
               showRecordMenu(context, ref, record: record, today: today),
-          // The grip swallows tap and long-press, so holding it starts a drag
-          // and nothing else. Without that, gripping without moving falls
-          // through to the row and opens the add menu — the one gesture a
-          // person is most likely to make while lining up a drag.
-          dragHandle: GestureDetector(
-            onTap: () {},
-            onLongPress: () {},
-            child: ReorderableDragStartListener(
-              index: index,
-              child: Padding(
-                // A finger-sized target around a small glyph.
-                padding: const EdgeInsets.symmetric(
-                  horizontal: SageSpace.sm,
-                  vertical: SageSpace.md,
-                ),
-                child: Icon(
-                  Icons.drag_indicator,
-                  size: 20,
-                  color: context.sage.inkLabel,
-                ),
+          // The grip is its own gesture area beside the row, not on top of it,
+          // so a press here picks the row up on contact and holds it for as
+          // long as the finger stays down. Wrapped in a swallowing detector it
+          // competed with the row's long-press and the add menu won.
+          dragHandle: ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              // A finger-sized target around a small glyph.
+              padding: const EdgeInsets.fromLTRB(
+                SageSpace.sm,
+                SageSpace.md,
+                SageSpace.md,
+                SageSpace.md,
+              ),
+              child: Icon(
+                Icons.drag_indicator,
+                size: 20,
+                color: context.sage.inkLabel,
               ),
             ),
           ),
@@ -499,26 +526,38 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           for (final FeedItem item in items)
             if (item is FeedRow) item.record.id: item.record,
         };
+        final Map<String, int> orders = <String, int>{
+          for (int i = 0; i < ids.length; i++)
+            ids[i]: i * PaymentRepository.sortOrderGap,
+        };
+        // Drawn from here until the query agrees, so the drop is final on
+        // screen the moment the finger lifts.
+        setState(() => _dropped = orders);
+
         // One transaction for the whole day. Written row by row, the query
         // behind the list re-emits after each one and the Feed draws every
-        // half-finished order on the way — which reads as the rows flicking
-        // back to where they were before settling.
-        await repos.db.transaction(() async {
-          for (int i = 0; i < ids.length; i++) {
-            final FeedRecord? record = byId[ids[i]];
-            if (record == null) continue;
-            final int order = i * PaymentRepository.sortOrderGap;
-            if (record.sortOrder == order) continue;
-            if (record.isIncome) {
-              await repos.incomes.setSortOrder(record.id, order);
-            } else {
-              await repos.payments.update(
-                record.id,
-                sortOrder: Value<int>(order),
-              );
+        // half-finished order on the way.
+        try {
+          await repos.db.transaction(() async {
+            for (final MapEntry<String, int> e in orders.entries) {
+              final FeedRecord? record = byId[e.key];
+              if (record == null || record.sortOrder == e.value) continue;
+              if (record.isIncome) {
+                await repos.incomes.setSortOrder(record.id, e.value);
+              } else {
+                await repos.payments.update(
+                  record.id,
+                  sortOrder: Value<int>(e.value),
+                );
+              }
             }
-          }
-        });
+          });
+        } catch (_) {
+          // Nothing was stored, so the overlay would hold an order that never
+          // becomes true.
+          if (mounted) setState(() => _dropped = null);
+          rethrow;
+        }
 
       case ReorderToOtherDay(
         recordId: final String id,
@@ -773,8 +812,8 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// The day a group of records falls on (spec 4.5). The overdue group carries
-/// its warning on the rows themselves, so its header draws nothing.
+/// The day a group of records falls on (spec 4.5), and the band that opens the
+/// overdue section above them.
 class _DayHeader extends StatelessWidget {
   const _DayHeader({
     required this.header,
@@ -792,9 +831,7 @@ class _DayHeader extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
-    if (header.isOverdue) return const SizedBox.shrink();
-
-    final CalendarDate date = header.date!;
+    final CalendarDate? date = header.date;
     final bool isToday = date == today;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -804,9 +841,15 @@ class _DayHeader extends StatelessWidget {
         SageSpace.xs,
       ),
       child: Text(
-        isToday ? tr('feed.today') : dates.dayMonth(date, reference: today),
+        header.isOverdue
+            ? tr('feed.overdue')
+            : (isToday
+                  ? tr('feed.today')
+                  : dates.dayMonth(date!, reference: today)),
         style: text.labelMedium?.copyWith(
-          color: isToday ? sage.accentStrong : sage.inkLabel,
+          color: header.isOverdue
+              ? sage.danger
+              : (isToday ? sage.accentStrong : sage.inkLabel),
         ),
       ),
     );

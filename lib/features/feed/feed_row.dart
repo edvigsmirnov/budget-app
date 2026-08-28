@@ -36,8 +36,8 @@ RowDetail detailFor(FeedDensity density) => switch (density) {
 /// far enough apart that switching is visible on a screen holding two records.
 double rowHeightFor(FeedDensity density) => switch (density) {
   FeedDensity.compact => 48,
-  FeedDensity.standard => 68,
-  FeedDensity.spacious => 88,
+  FeedDensity.standard => 72,
+  FeedDensity.spacious => 96,
 };
 
 /// One record in the Feed.
@@ -131,105 +131,115 @@ class FeedRowTile extends StatelessWidget {
       },
       child: Ink(
         color: isOverdue ? sage.dangerTint : Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: SizedBox(
-            height: rowHeightFor(density),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: SageSpace.gutter,
-                vertical: density == FeedDensity.compact ? 4 : SageSpace.sm,
-              ),
-              child: Row(
-                children: <Widget>[
-                  _PaidCircle(
-                    record: record,
-                    onTap: isFrozen ? null : onTogglePaid,
-                  ),
-                  const SizedBox(width: SageSpace.md),
-                  _TypeMarker(record: record, category: category),
-                  const SizedBox(width: SageSpace.md),
-                  if (isOverdue) ...<Widget>[
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      size: 16,
-                      color: sage.danger,
+        child: ConstrainedBox(
+          // A floor, not a fixed height. At the spacious end the title and its
+          // subtitle together are taller than the step, and a fixed box clipped
+          // the second line instead of growing.
+          constraints: BoxConstraints(minHeight: rowHeightFor(density)),
+          child: Row(
+            children: <Widget>[
+              // The grip is a sibling of the tappable area, not a child of it.
+              // Nested inside, a press-and-hold on the grip raced the row's own
+              // long-press and the quick-add menu won every time.
+              Expanded(
+                child: InkWell(
+                  onTap: onTap,
+                  onLongPress: onLongPress,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      SageSpace.gutter,
+                      density == FeedDensity.compact ? 4 : SageSpace.sm,
+                      dragHandle == null ? SageSpace.gutter : SageSpace.xs,
+                      density == FeedDensity.compact ? 4 : SageSpace.sm,
                     ),
-                    const SizedBox(width: SageSpace.xs),
-                  ],
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: <Widget>[
-                        Text(
-                          record.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: record.isPaid ? sage.inkSecondary : sage.ink,
+                        _PaidCircle(
+                          record: record,
+                          onTap: isFrozen ? null : onTogglePaid,
+                        ),
+                        const SizedBox(width: SageSpace.md),
+                        _TypeMarker(record: record, category: category),
+                        const SizedBox(width: SageSpace.md),
+                        if (isOverdue) ...<Widget>[
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 16,
+                            color: sage.danger,
+                          ),
+                          const SizedBox(width: SageSpace.xs),
+                        ],
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                record.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: record.isPaid
+                                      ? sage.inkSecondary
+                                      : sage.ink,
+                                ),
+                              ),
+                              if (_subtitle(record, category)
+                                  case final String sub)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    sub,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: text.bodySmall,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                        if (_subtitle(record, category) case final String sub)
+                        if (isFrozen)
                           Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              sub,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: text.bodySmall,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (isFrozen)
-                    Padding(
-                      padding: const EdgeInsets.only(right: SageSpace.sm),
-                      child: Icon(
-                        Icons.lock_outline,
-                        size: 16,
-                        color: sage.inkLabel,
-                      ),
-                    ),
-                  if (record.notes != null && record.notes!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(right: SageSpace.sm),
-                      child: InkWell(
-                        onTap: () => _showNote(context, record.notes!),
-                        customBorder: const CircleBorder(),
-                        child: Tooltip(
-                          message: tr('payment.note'),
-                          child: Padding(
-                            padding: const EdgeInsets.all(SageSpace.xs),
+                            padding: const EdgeInsets.only(left: SageSpace.sm),
                             child: Icon(
-                              Icons.sticky_note_2_outlined,
-                              size: 18,
+                              Icons.lock_outline,
+                              size: 16,
                               color: sage.inkLabel,
                             ),
                           ),
+                        if (record.notes != null && record.notes!.isNotEmpty)
+                          InkWell(
+                            onTap: () => _showNote(context, record.notes!),
+                            customBorder: const CircleBorder(),
+                            child: Padding(
+                              padding: const EdgeInsets.all(SageSpace.xs),
+                              child: Icon(
+                                Icons.sticky_note_2_outlined,
+                                size: 18,
+                                color: sage.inkLabel,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: SageSpace.sm),
+                        Text(
+                          _amountLabel(record, money),
+                          style: text.bodyLarge?.copyWith(
+                            color: amountColor,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: const <FontFeature>[
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                  Text(
-                    _amountLabel(record, money),
-                    style: text.bodyLarge?.copyWith(
-                      color: amountColor,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const <FontFeature>[
-                        FontFeature.tabularFigures(),
                       ],
                     ),
                   ),
-                  if (dragHandle != null) ...<Widget>[
-                    const SizedBox(width: SageSpace.sm),
-                    dragHandle!,
-                  ],
-                ],
+                ),
               ),
-            ),
+              ?dragHandle,
+            ],
           ),
         ),
       ),

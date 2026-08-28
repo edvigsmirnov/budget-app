@@ -155,7 +155,8 @@
     "addAfter": "Add on the day after",
     "duplicateBefore": "Duplicate to the day before",
     "duplicateAfter": "Duplicate to the day after",
-    "income": "Income"
+    "income": "Income",
+    "overdue": "Overdue"
   },
   "payment": {
     "add": "Add expense",

@@ -171,10 +171,11 @@ void main() {
       today: d('2026-03-01'),
       orderMode: FeedOrderMode.free,
     );
-    // [overdueHeader, missed, h20, later]; 'later' dropped next to 'missed'.
+    // [overdueBand, h02-01, missed, h03-20, later]; 'later' dropped straight
+    // under the band, where no day has been named yet.
     final ReorderOutcome outcome = resolveReorder(
       items: items,
-      oldIndex: 3,
+      oldIndex: 4,
       insertAt: 1,
       orderMode: FeedOrderMode.free,
     );

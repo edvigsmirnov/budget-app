@@ -50,7 +50,29 @@ void main() {
         orderMode: FeedOrderMode.grouped,
       );
       expect(keysOf(items).first, 'header:overdue');
-      expect(keysOf(items)[1], 'row:missed');
+      // Dated inside the section, so a missed payment says how late it is.
+      expect(keysOf(items)[1], 'header:overdue:2026-03-01');
+      expect(keysOf(items)[2], 'row:missed');
+    });
+
+    test('a day heading the overdue section keys apart from its own group', () {
+      // The same date can appear twice: once for what was missed, once for
+      // what was settled on it.
+      final List<FeedItem> items = buildFeedItems(
+        records: <FeedRecord>[
+          expense('missed', '2026-03-01'),
+          expense('rent', '2026-03-01', isPaid: true),
+        ],
+        today: today,
+        orderMode: FeedOrderMode.grouped,
+      );
+      expect(keysOf(items), <String>[
+        'header:overdue',
+        'header:overdue:2026-03-01',
+        'row:missed',
+        'header:2026-03-01',
+        'row:rent',
+      ]);
     });
 
     test('a paid past expense stays in its day', () {

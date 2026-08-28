@@ -71,6 +71,24 @@ class FeedRecord {
   /// (spec 5.5). Null until a recompute has placed it.
   final String? budgetPeriodId;
 
+  /// The same record at another position in its day.
+  ///
+  /// Used to hold a just-dropped order locally while the write lands.
+  FeedRecord withSortOrder(int order) => FeedRecord(
+    id: id,
+    date: date,
+    title: title,
+    amount: amount,
+    isIncome: isIncome,
+    isPaid: isPaid,
+    sortOrder: order,
+    expenseType: expenseType,
+    categoryId: categoryId,
+    notes: notes,
+    groupRecurringId: groupRecurringId,
+    budgetPeriodId: budgetPeriodId,
+  );
+
   bool get isMandatory => expenseType == ExpenseType.mandatory;
 
   /// Overdue: due before today and still unpaid (spec 4.5). An unpaid income
@@ -112,14 +130,23 @@ sealed class FeedItem {
 
 /// "Overdue", or a date.
 class FeedHeader extends FeedItem {
-  const FeedHeader.day(this.date) : isOverdue = false;
-  const FeedHeader.overdue() : date = null, isOverdue = true;
+  const FeedHeader.day(this.date, {this.inOverdue = false}) : isOverdue = false;
+  const FeedHeader.overdue() : date = null, isOverdue = true, inOverdue = true;
 
   final CalendarDate? date;
+
+  /// The band that opens the overdue section.
   final bool isOverdue;
 
+  /// A day inside that section. The same date can head a second group further
+  /// down — a day with both a missed payment and a settled one — so the key
+  /// has to say which of the two this is.
+  final bool inOverdue;
+
   @override
-  String get key => isOverdue ? 'header:overdue' : 'header:${date!.toIso()}';
+  String get key => isOverdue
+      ? 'header:overdue'
+      : 'header:${inOverdue ? 'overdue:' : ''}${date!.toIso()}';
 }
 
 class FeedRow extends FeedItem {
@@ -174,7 +201,15 @@ List<FeedItem> buildFeedItems({
       return byDate != 0 ? byDate : compareInDay(a, b, orderMode);
     });
     items.add(const FeedHeader.overdue());
+    // Dated inside the section too. Lifted to the top, a missed payment
+    // otherwise sits under no date at all and there is nothing to say how late
+    // it is.
+    CalendarDate? lastDay;
     for (final FeedRecord r in overdue) {
+      if (r.date != lastDay) {
+        items.add(FeedHeader.day(r.date, inOverdue: true));
+        lastDay = r.date;
+      }
       items.add(FeedRow(r, isCovered: coverage[r.id] ?? true));
     }
   }
