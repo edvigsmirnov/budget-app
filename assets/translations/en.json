@@ -411,5 +411,13 @@
     "unfreeze": "Reopen",
     "unfreezeBody": "It stays editable for 48 hours. Say why — the reason is kept with the period.",
     "unfreezeTitle": "Reopen this period?"
+  },
+  "overdue": {
+    "title": "Missed payments",
+    "count": {
+      "one": "{} missed payment",
+      "other": "{} missed payments"
+    },
+    "allSettled": "Nothing is late any more."
   }
 }

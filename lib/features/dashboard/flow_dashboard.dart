@@ -12,6 +12,7 @@ import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/projection_chart.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
+import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// The dashboard of a Flow Space (spec 4.6).
@@ -79,6 +80,11 @@ class _Body extends ConsumerWidget {
           onTap: () => editBalance(context, ref, space: space, money: money),
         ),
         const SizedBox(height: SageSpace.md),
+        // What is already late, before the projection of what is ahead.
+        OverdueChip(
+          money: money,
+          margin: const EdgeInsets.only(bottom: SageSpace.md),
+        ),
         ProjectionCard(
           projection: projection,
           money: money,

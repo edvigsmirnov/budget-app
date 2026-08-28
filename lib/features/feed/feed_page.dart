@@ -23,6 +23,7 @@ import 'package:sielto/features/feed/feed_row.dart';
 import 'package:sielto/features/feed/feed_window.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/incomes/receipt_dialog.dart';
+import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
@@ -130,6 +131,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         bottom: _FeedTotals(
           source: source,
           money: money,
+          hasOverdue: !ref.watch(overduePaymentsProvider).isEmpty,
           selector: source.byPeriod
               ? PeriodSelector(
                   onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
@@ -655,6 +657,7 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
     required this.source,
     required this.money,
     required this.selector,
+    required this.hasOverdue,
   });
 
   final _FeedSource source;
@@ -663,11 +666,20 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   /// The period arrows, when there is a period to move between.
   final Widget? selector;
 
+  /// Whether the missed-payments chip takes a row of its own. The bar has to
+  /// declare its height before the chip can decide it is empty.
+  final bool hasOverdue;
+
   static const double _tileHeight = 58;
+  static const double _chipHeight = 48;
 
   @override
-  Size get preferredSize =>
-      Size.fromHeight((selector == null ? 8 : 48) + _tileHeight * 2 + 20);
+  Size get preferredSize => Size.fromHeight(
+    (selector == null ? 8 : 48) +
+        _tileHeight * 2 +
+        20 +
+        (hasOverdue ? _chipHeight : 0),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -749,6 +761,12 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ],
             ),
+          ),
+          // What is already late, under the figures that describe what is
+          // still ahead. Draws nothing when there is nothing missed.
+          OverdueChip(
+            money: money,
+            margin: const EdgeInsets.only(top: SageSpace.sm),
           ),
         ],
       ),

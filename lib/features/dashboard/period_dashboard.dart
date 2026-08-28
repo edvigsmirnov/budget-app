@@ -11,6 +11,7 @@ import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
+import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
@@ -131,6 +132,11 @@ class _PeriodBody extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: SageSpace.md),
+        // What is already late, whichever period it belongs to.
+        OverdueChip(
+          money: money,
+          margin: const EdgeInsets.only(bottom: SageSpace.md),
+        ),
         TotalsCard(
           planned: ledger.totalPlanned,
           paid: ledger.totalPaid,
