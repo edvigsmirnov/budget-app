@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The plate the adaptive foreground sits on. White, so the mark keeps
+         the same ground it has on the legacy icon. -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>
