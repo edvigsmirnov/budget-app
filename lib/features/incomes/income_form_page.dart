@@ -372,7 +372,13 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppBar(
-        title: Text(isOccurrence ? tr('income.edit') : tr('income.add')),
+        title: Text(
+          isOccurrence
+              ? tr('income.edit')
+              : (ref.space.budgetMode == BudgetMode.budget
+                    ? tr('budget.topUp')
+                    : tr('income.add')),
+        ),
         actions: <Widget>[
           // Deleting is protected, so a closed period offers no delete rather
           // than one that refuses (spec 5.5). An anchor occurrence has none

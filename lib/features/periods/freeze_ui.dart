@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
+import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -23,14 +25,29 @@ Future<bool> guardFreeze(
     await write();
     return true;
   } on PeriodFrozen {
+    if (context.mounted) _say(context, tr('freeze.refused'));
+    return false;
+  } on BeyondHardDeadline catch (e) {
+    // The other rule the data layer enforces on a date (spec 4.8). One place
+    // to report both, because every write goes through here.
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(tr('freeze.refused'))));
+      _say(
+        context,
+        tr(
+          'budget.refusedBeyondDeadline',
+          namedArgs: <String, String>{
+            'date': DateLabels(context.locale.toString()).short(e.deadline),
+          },
+        ),
+      );
     }
     return false;
   }
 }
+
+void _say(BuildContext context, String message) => ScaffoldMessenger.of(context)
+  ..hideCurrentSnackBar()
+  ..showSnackBar(SnackBar(content: Text(message)));
 
 /// The state of the period a screen is showing (spec 5.5).
 ///

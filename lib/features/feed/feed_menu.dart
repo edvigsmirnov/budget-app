@@ -5,6 +5,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
@@ -54,7 +55,11 @@ Future<void> showQuickAddMenu(
         value: _QuickAdd.income,
         child: _MenuLine(
           icon: Icons.add_circle_outline,
-          label: tr('income.add'),
+          // Same record, different meaning: in Budget mode money arriving is
+          // not income for a period, it is a payment into the fund (spec 4.8).
+          label: ref.space.budgetMode == BudgetMode.budget
+              ? tr('budget.topUp')
+              : tr('income.add'),
         ),
       ),
       PopupMenuItem<_QuickAdd>(

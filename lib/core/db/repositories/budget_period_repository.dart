@@ -159,6 +159,44 @@ class BudgetPeriodRepository
     return null;
   }
 
+  /// The Budget fund's planned figure (spec 4.8). Null clears it, which puts
+  /// the Space back into plain expense-tracking with no fit to measure.
+  Future<int> setBudgetTarget(String periodId, Decimal? target) => _write(
+    periodId,
+    BudgetPeriodsCompanion(budgetTarget: Value<Decimal?>(target)),
+  );
+
+  /// The event date and how strictly it binds (spec 4.8).
+  ///
+  /// Moving it backwards is allowed with records already past it: they are
+  /// marked beyond the deadline, never deleted or blocked, and come back into
+  /// the reckoning if it moves forward again.
+  Future<int> setDeadline(
+    String periodId, {
+    required CalendarDate? date,
+    required bool isHard,
+  }) => _write(
+    periodId,
+    BudgetPeriodsCompanion(
+      deadlineDate: Value<CalendarDate?>(date),
+      // A deadline that does not exist cannot be hard.
+      deadlineIsHard: Value<bool>(date != null && isHard),
+    ),
+  );
+
+  Future<int> _write(String periodId, BudgetPeriodsCompanion values) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(
+      db.budgetPeriods,
+    )..where(($BudgetPeriodsTable t) => t.id.equals(periodId))).write(
+      values.copyWith(
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
+  }
+
   /// Temporary unfreeze of a closed period (spec 5.5).
   Future<int> unfreeze(String periodId, DateTime until, String reason) {
     final ({String author, DateTime editedAt}) s = stamp();

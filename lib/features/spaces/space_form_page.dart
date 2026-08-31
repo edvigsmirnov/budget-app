@@ -13,16 +13,13 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/spaces/starter_categories.dart';
 
-/// The modes a Space can be created in today.
-///
-/// Budget is missing on purpose. Its dashboard, its fund and its deadline are
-/// M5 and do not exist, and the mode cannot be changed after creation
-/// (spec 3.1) — so offering it would strand whoever picked it in a Space that
-/// never computes. The enum keeps the value: the schema, the engine and any
-/// Space restored from a backup still know it.
+/// The modes a Space can be created in, in the order the spec presents them
+/// (spec 3.1). The choice is permanent, so all three have to be real before
+/// any of them is offered — which they now are.
 const List<BudgetMode> offeredBudgetModes = <BudgetMode>[
   BudgetMode.incomeDriven,
   BudgetMode.flow,
+  BudgetMode.budget,
 ];
 
 /// Creating a Space (spec 3.1).

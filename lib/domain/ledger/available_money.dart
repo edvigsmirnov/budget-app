@@ -129,12 +129,17 @@ class BudgetContext {
     return LedgerContext(available: target + contributions, entries: entries);
   }
 
-  /// Entries past a deadline that was later pulled backwards. They are neither
-  /// deleted nor blocked — they are dimmed and left out of the fit calculation
-  /// until the deadline moves again or the entry is rescheduled (spec 4.8).
+  /// Entries past a hard deadline that was later pulled backwards. They are
+  /// neither deleted nor blocked — they are dimmed and left out of the fit
+  /// calculation until the deadline moves again or the entry is rescheduled
+  /// (spec 4.8).
+  ///
+  /// Only a hard deadline marks anything. A soft one is a marker and affects
+  /// neither input nor arithmetic, so a record dated after it is an ordinary
+  /// record.
   List<LedgerEntry> get beyondDeadline {
     final CalendarDate? deadline = deadlineDate;
-    if (deadline == null) return const <LedgerEntry>[];
+    if (deadline == null || !deadlineIsHard) return const <LedgerEntry>[];
     return entries.where((LedgerEntry e) => e.date.isAfter(deadline)).toList();
   }
 

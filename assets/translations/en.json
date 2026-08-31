@@ -8,7 +8,8 @@
     "undo": "Undo",
     "loadFailed": "Could not load this data",
     "next": "Next",
-    "skip": "Skip"
+    "skip": "Skip",
+    "clear": "Clear"
   },
   "theme": {
     "system": "System",
@@ -418,5 +419,38 @@
       "other": "{} missed payments"
     },
     "allSettled": "Nothing is late any more."
+  },
+  "budget": {
+    "remaining": "Left of the budget",
+    "ofFund": "of a {amount} fund",
+    "spent": "Spent",
+    "setFund": "Set a budget",
+    "setDeadline": "Set a date",
+    "fund": "Fund",
+    "target": "Budget",
+    "targetHint": "Leave empty to just track spending",
+    "noTarget": "Not set",
+    "contributions": "Paid in",
+    "fundSheetTitle": "The budget for this goal",
+    "fundSheetBody": "What you plan to spend. Money paid in on the feed adds to it. Leave it empty and the Space simply records what you spend.",
+    "deadline": "Date",
+    "noDeadline": "No date",
+    "deadlineSheetTitle": "The date this is for",
+    "deadlineSheetBody": "The day of the trip, the deadline, the event. Move it whenever plans change — nothing is ever lost by moving it.",
+    "deadlineToday": "Today",
+    "daysLeft": {
+      "one": "{} day left",
+      "other": "{} days left"
+    },
+    "daysAgo": {
+      "one": "{} day ago",
+      "other": "{} days ago"
+    },
+    "hard": "Fixed",
+    "hardDeadline": "Fixed date",
+    "hardDeadlineHint": "Refuses records dated after it. Off, the date is just a marker.",
+    "refusedBeyondDeadline": "The date is fixed at {date}. Nothing can be dated after it.",
+    "topUp": "Pay into the budget",
+    "beyondDeadline": "Past the date"
   }
 }

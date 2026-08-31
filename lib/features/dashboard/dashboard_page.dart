@@ -7,6 +7,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/balance_sheet.dart';
+import 'package:sielto/features/dashboard/budget_dashboard.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/flow_dashboard.dart';
 import 'package:sielto/features/dashboard/period_dashboard.dart';
@@ -43,9 +44,7 @@ class DashboardPage extends ConsumerWidget {
             child: switch (space.budgetMode) {
               BudgetMode.flow => FlowDashboardBody(space: space),
               BudgetMode.incomeDriven => PeriodDashboardBody(space: space),
-              // Budget mode is M5; until then its Spaces show the Flow view,
-              // which at least computes honestly from what has been entered.
-              BudgetMode.budget => FlowDashboardBody(space: space),
+              BudgetMode.budget => BudgetDashboardBody(space: space),
             },
           ),
         ],

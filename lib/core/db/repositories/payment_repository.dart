@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/period/freeze.dart';
@@ -22,6 +23,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   TableInfo<$PaymentsTable, Payment> get table => db.payments;
 
   late final FreezeGuard _freeze = FreezeGuard(db: db, clock: clock);
+  late final DeadlineGuard _deadline = DeadlineGuard(db: db);
 
   /// Which fields a frozen period protects (spec 5.5).
   ///
@@ -97,6 +99,8 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     String? notes,
     bool isPaid = false,
   }) async {
+    await _deadline.refuseIfBeyondDeadline(spaceId, dueDate);
+
     final ({String author, DateTime editedAt}) s = stamp();
     final PaymentsCompanion row = PaymentsCompanion.insert(
       id: SyncedRepository.newId(),
@@ -141,6 +145,9 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     )) {
       final Payment? row = await byId(id);
       await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+      if (dueDate.present && row != null) {
+        await _deadline.refuseIfBeyondDeadline(row.spaceId, dueDate.value);
+      }
     }
 
     final ({String author, DateTime editedAt}) s = stamp();

@@ -61,6 +61,7 @@ class FeedRowTile extends StatelessWidget {
     required this.onLongPress,
     this.isFrozen = false,
     this.isOverdue = false,
+    this.isBeyondDeadline = false,
     this.dragHandle,
     super.key,
   });
@@ -87,18 +88,32 @@ class FeedRowTile extends StatelessWidget {
   /// late records each say so (spec 4.5).
   final bool isOverdue;
 
+  /// Past a hard deadline that was moved backwards over it. Dimmed and out of
+  /// the reckoning, but neither deleted nor blocked (spec 4.8).
+  final bool isBeyondDeadline;
+
   /// The reorder grip, supplied by the list so it can attach its own listener.
   final Widget? dragHandle;
 
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    final TextTheme text = Theme.of(context).textTheme;
     // Income reads green; an expense is plain ink until the money stops
     // reaching it, and red is reserved for that and for being late.
     final Color amountColor = record.isIncome
         ? sage.accentStrong
         : (isOverdue || !isCovered ? sage.danger : sage.ink);
+
+    // Out of the reckoning until the deadline moves again or the record does.
+    if (isBeyondDeadline) {
+      return Opacity(opacity: 0.45, child: _row(context, amountColor));
+    }
+    return _row(context, amountColor);
+  }
+
+  Widget _row(BuildContext context, Color amountColor) {
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
 
     return Dismissible(
       key: ValueKey<String>('dismiss:${record.id}'),

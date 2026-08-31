@@ -28,6 +28,7 @@ import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/shell/app_header.dart';
+import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -176,6 +177,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           categories:
                               categories.value ?? const <String, Category>{},
                           freeze: ref.watch(freezeLookupProvider),
+                          beyondDeadline: source.beyondDeadline,
                         ),
                     onReorderItem: (int oldIndex, int newIndex) => _onReorder(
                       items: items,
@@ -240,6 +242,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           paid: Decimal.zero,
           remaining: Decimal.zero,
           byPeriod: false,
+          mode: space.budgetMode,
         );
       }
 
@@ -253,6 +256,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         paid: selected.totalPaid,
         remaining: selected.totalRemaining,
         byPeriod: true,
+        mode: space.budgetMode,
+      );
+    }
+
+    if (space.budgetMode == BudgetMode.budget) {
+      final BudgetLedger? budget = ref.watch(budgetLedgerProvider).value;
+      if (budget == null) return null;
+      return _FeedSource(
+        records: records,
+        today: budget.today,
+        coverage: budget.coverageByEntry,
+        moneyEndsAt: budget.moneyEndsAt,
+        // With no fund there is nothing to fit into, so the figures say what
+        // the fund holds — zero — rather than pretending to a limit.
+        available: budget.available,
+        freeCash: budget.hasFund ? budget.remaining : budget.available,
+        paid: budget.totalPaid,
+        remaining: budget.totalRemaining,
+        byPeriod: false,
+        mode: space.budgetMode,
+        beyondDeadline: budget.beyondDeadline,
       );
     }
 
@@ -269,6 +293,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       paid: flow.totalPaid,
       remaining: flow.totalRemaining,
       byPeriod: false,
+      mode: space.budgetMode,
     );
   }
 
@@ -381,6 +406,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     required CalendarDate today,
     required Map<String, Category> categories,
     required FreezeLookup freeze,
+    required Set<String> beyondDeadline,
   }) {
     switch (item) {
       case FeedHeader():
@@ -408,6 +434,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           onDelete: () => _delete(record),
           isFrozen: freeze.isFrozen(record.budgetPeriodId),
           isOverdue: record.isOverdue(today),
+          isBeyondDeadline: beyondDeadline.contains(record.id),
           onLongPress: () =>
               showRecordMenu(context, ref, record: record, today: today),
           // The grip is its own gesture area beside the row, not on top of it,
@@ -631,6 +658,8 @@ class _FeedSource {
     required this.paid,
     required this.remaining,
     required this.byPeriod,
+    required this.mode,
+    this.beyondDeadline = const <String>{},
   });
 
   final List<FeedRecord> records;
@@ -647,11 +676,25 @@ class _FeedSource {
   /// Null when the plan is not covered, or when [available] is unknown.
   final Decimal? freeCash;
 
+  /// What the starting sum is called in this mode. The figure is the same
+  /// shape everywhere; what it means is not.
+  String get availableLabel => switch (mode) {
+    BudgetMode.incomeDriven => 'feed.income',
+    BudgetMode.flow => 'feed.currentMoney',
+    BudgetMode.budget => 'budget.fund',
+  };
+
   /// Of the plan, what is settled and what is still owed (spec 4.5).
   final Decimal paid;
   final Decimal remaining;
 
   final bool byPeriod;
+
+  final BudgetMode mode;
+
+  /// Records a hard deadline moved past. Drawn dimmed and left out of the
+  /// reckoning, never deleted (spec 4.8).
+  final Set<String> beyondDeadline;
 }
 
 /// Income and Free money for the current context, above the list (spec 4.5).
@@ -719,9 +762,7 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
               children: <Widget>[
                 Expanded(
                   child: _Tile(
-                    label: source.byPeriod
-                        ? tr('feed.income')
-                        : tr('feed.currentMoney'),
+                    label: tr(source.availableLabel),
                     text: available == null
                         ? tr('income.amountUnknown')
                         : money.format(available),

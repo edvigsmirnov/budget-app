@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/period/freeze.dart';
@@ -247,6 +248,7 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
   TableInfo<$IncomesTable, Income> get table => db.incomes;
 
   late final FreezeGuard _freeze = FreezeGuard(db: db, clock: clock);
+  late final DeadlineGuard _deadline = DeadlineGuard(db: db);
 
   Future<Income?> byId(String id) =>
       (selectAlive()..where(($IncomesTable t) => t.id.equals(id)))
@@ -292,7 +294,9 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     String? budgetPeriodId,
     String? notes,
     bool isPaid = false,
-  }) {
+  }) async {
+    await _deadline.refuseIfBeyondDeadline(spaceId, expectedDate);
+
     final ({String author, DateTime editedAt}) s = stamp();
     return db
         .into(db.incomes)
@@ -330,7 +334,11 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
         expectedDate.present ||
         actualDate.present ||
         isPaid.present) {
-      await _freeze.refuseIfFrozen((await byId(id))?.budgetPeriodId);
+      final Income? row = await byId(id);
+      await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+      if (expectedDate.present && row != null) {
+        await _deadline.refuseIfBeyondDeadline(row.spaceId, expectedDate.value);
+      }
     }
 
     final ({String author, DateTime editedAt}) s = stamp();
