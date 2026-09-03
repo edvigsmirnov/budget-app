@@ -45,7 +45,10 @@ ln -s "../lib/$PKG/$BIN" "$ROOT/usr/bin/$BIN"
 install -m 644 "$ICON" "$ROOT/usr/share/icons/hicolor/512x512/apps/$BIN.png"
 install -m 644 LICENSE "$ROOT/usr/share/doc/$PKG/copyright"
 
-cat > "$ROOT/usr/share/applications/$APP_ID.desktop" <<DESKTOP
+# Written outside the staging tree and installed from there, so the formats
+# built after the rpm do not read anything rpm might have cleaned up.
+DESKTOP_FILE=$WORK/$APP_ID.desktop
+cat > "$DESKTOP_FILE" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=Sielto
@@ -57,7 +60,8 @@ Terminal=false
 Categories=Office;Finance;
 StartupWMClass=$BIN
 DESKTOP
-chmod 644 "$ROOT/usr/share/applications/$APP_ID.desktop"
+install -m 644 "$DESKTOP_FILE" \
+  "$ROOT/usr/share/applications/$APP_ID.desktop"
 
 SIZE_KB=$(du -sk "$ROOT/usr" | cut -f1)
 
@@ -125,13 +129,19 @@ No account, no telemetry, no bank connection.
 /usr/share/doc/$PKG/copyright
 SPEC
 
+  # rpm 4.x deletes its buildroot once the package is written, so it gets a
+  # throwaway copy: pointing it at $ROOT took the staging tree out from under
+  # the formats built after it. rpm 6 leaves the buildroot alone, which is why
+  # this only ever failed on CI.
+  RPMROOT=$WORK/rpm-buildroot
+  cp -r "$ROOT" "$RPMROOT"
+
   # _dbpath: never read the system rpm database, which is unreadable to a
   # normal user and irrelevant here. _buildhost: rpm stamps the hostname
   # otherwise, and these artifacts are published.
   rpmbuild -bb "$SPEC" \
     --define "_topdir $WORK/rpmbuild" \
-    --define "_buildrootdir $WORK/rpmroot" \
-    --buildroot "$ROOT" \
+    --buildroot "$RPMROOT" \
     --define "_rpmdir $WORK/rpmout" \
     --define "_dbpath $WORK/rpmdb" \
     --define "_buildhost sielto-build" \
@@ -152,7 +162,7 @@ install -d "$TAR"
 cp -r "$BUNDLE/." "$TAR/"
 install -m 644 LICENSE "$TAR/LICENSE"
 install -m 644 "$ICON" "$TAR/$BIN.png"
-cp "$ROOT/usr/share/applications/$APP_ID.desktop" "$TAR/"
+install -m 644 "$DESKTOP_FILE" "$TAR/"
 cat > "$TAR/INSTALL.txt" <<INSTALL
 Sielto $VERSION+$BUILD (linux-x64)
 
@@ -177,7 +187,7 @@ if command -v appimagetool >/dev/null 2>&1; then
   APPDIR=$WORK/AppDir
   install -d "$APPDIR/usr/bin"
   cp -r "$BUNDLE/." "$APPDIR/usr/bin/"
-  cp "$ROOT/usr/share/applications/$APP_ID.desktop" "$APPDIR/$BIN.desktop"
+  install -m 644 "$DESKTOP_FILE" "$APPDIR/$BIN.desktop"
   # appimagetool wants the icon beside the .desktop file.
   install -m 644 "$ICON" "$APPDIR/$BIN.png"
   cat > "$APPDIR/AppRun" <<'APPRUN'
@@ -189,12 +199,22 @@ APPRUN
 
   APPIMAGE_FILE="$OUT/sielto-app-$VERSION+$BUILD-x86_64.AppImage"
   # --appimage-extract-and-run: CI runners have no FUSE to mount the tool.
+  # stdout is noise; stderr is kept, or a failure here has no explanation.
   ARCH=x86_64 appimagetool --appimage-extract-and-run "$APPDIR" "$APPIMAGE_FILE" \
-    >/dev/null 2>&1
+    >/dev/null
   echo "AppImage $(basename "$APPIMAGE_FILE")"
 else
   echo "AppImage skipped: appimagetool not found" >&2
 fi
+
+# Every format whose tool was present must have produced a file. Without this a
+# half-finished run still exits 0 and CI uploads whatever happens to be there.
+missing=0
+for f in "$DEB_FILE" "$TAR_FILE" ${RPM_FILE:+"$RPM_FILE"} \
+  ${APPIMAGE_FILE:+"$APPIMAGE_FILE"}; do
+  [ -s "$f" ] || { echo "missing or empty: $f" >&2; missing=1; }
+done
+[ "$missing" -eq 0 ] || exit 1
 
 echo
 ls -lh "$OUT" | tail -n +2 | awk '{print "  " $5, $9}'
