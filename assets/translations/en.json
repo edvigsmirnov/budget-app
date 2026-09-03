@@ -16,10 +16,6 @@
     "light": "Light",
     "dark": "Dark"
   },
-  "language": {
-    "en": "English",
-    "ru": "Русский"
-  },
   "density": {
     "compact": "Compact",
     "standard": "Standard",
@@ -389,6 +385,7 @@
     "noCountryBody": "Only weekends and your own non-working days count.",
     "noCustomDays": "None yet.",
     "notLoaded": "Not loaded for this year yet.",
+    "needsDownload": "No offline list ships for this country. Turn on the download above to fetch it.",
     "publicTitle": "Public holidays",
     "searchCountry": "Search",
     "source": "From the public API at date.nager.at.",
@@ -430,9 +427,9 @@
     "target": "Budget",
     "targetHint": "Leave empty to just track spending",
     "noTarget": "Not set",
-    "contributions": "Paid in",
+    "contributions": "Top-ups",
     "fundSheetTitle": "The budget for this goal",
-    "fundSheetBody": "What you plan to spend. Money paid in on the feed adds to it. Leave it empty and the Space simply records what you spend.",
+    "fundSheetBody": "What you plan to spend. Top-ups in the feed add to it. Leave it empty and the Space simply records what you spend.",
     "deadline": "Date",
     "noDeadline": "No date",
     "deadlineSheetTitle": "The date this is for",
@@ -450,7 +447,7 @@
     "hardDeadline": "Fixed date",
     "hardDeadlineHint": "Refuses records dated after it. Off, the date is just a marker.",
     "refusedBeyondDeadline": "The date is fixed at {date}. Nothing can be dated after it.",
-    "topUp": "Pay into the budget",
+    "topUp": "Top up the budget",
     "beyondDeadline": "Past the date"
   }
 }

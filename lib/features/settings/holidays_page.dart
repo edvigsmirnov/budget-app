@@ -10,6 +10,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/periods/holiday_service.dart';
 
 /// Settings → Weekends and holidays (spec 5.1.2).
 ///
@@ -36,7 +37,9 @@ class HolidaysPage extends ConsumerWidget {
           _SectionLabel(tr('holidays.country')),
           ListTile(
             leading: const Icon(Icons.public),
-            title: Text(_countryLabel(ref, country)),
+            title: Text(
+              _countryLabel(ref, country, context.locale.languageCode),
+            ),
             subtitle: Text(tr('holidays.countryHint')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _pickCountry(context, ref),
@@ -85,10 +88,11 @@ class HolidaysPage extends ConsumerWidget {
     );
   }
 
-  String _countryLabel(WidgetRef ref, String? code) {
+  String _countryLabel(WidgetRef ref, String? code, String language) {
     if (code == null) return tr('holidays.noCountry');
     final List<HolidayCountry> all =
-        ref.watch(holidayCountriesProvider).value ?? const <HolidayCountry>[];
+        ref.watch(holidayCountriesProvider(language)).value ??
+        const <HolidayCountry>[];
     for (final HolidayCountry c in all) {
       if (c.code == code) return '${c.name} ($code)';
     }
@@ -222,7 +226,9 @@ class _PublicHolidays extends ConsumerWidget {
 
     final int year = ref.watch(spaceClockProvider).today().year;
     // Watched so the list fills in as soon as a fetch lands.
-    final AsyncValue<Object?> refresh = ref.watch(resolvedCalendarProvider);
+    final AsyncValue<ResolvedCalendar> refresh = ref.watch(
+      resolvedCalendarProvider,
+    );
 
     return FutureBuilder<List<CalendarDate>?>(
       future: ref.watch(repositoriesProvider).holidays.cached(country!, year),
@@ -234,7 +240,17 @@ class _PublicHolidays extends ConsumerWidget {
             }
             final List<CalendarDate>? days = snapshot.data;
             if (days == null || days.isEmpty) {
-              return _Note(tr('holidays.notLoaded'));
+              // countries.json offers every country the source knows, ten
+              // times what is bundled, so an empty list usually means this
+              // country needs the download rather than that it failed.
+              final ResolvedCalendar? resolved = refresh.value;
+              final bool blocked =
+                  resolved != null &&
+                  resolved.missingYears.contains(year) &&
+                  !(ref.watch(holidayConsentProvider) ?? false);
+              return _Note(
+                tr(blocked ? 'holidays.needsDownload' : 'holidays.notLoaded'),
+              );
             }
             return Column(
               children: <Widget>[
@@ -355,7 +371,10 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
   @override
   Widget build(BuildContext context) {
     final List<HolidayCountry> all =
-        ref.watch(holidayCountriesProvider).value ?? const <HolidayCountry>[];
+        ref
+            .watch(holidayCountriesProvider(context.locale.languageCode))
+            .value ??
+        const <HolidayCountry>[];
     final String query = _query.trim().toLowerCase();
     final List<HolidayCountry> shown = query.isEmpty
         ? all

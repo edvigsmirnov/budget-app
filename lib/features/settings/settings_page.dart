@@ -9,6 +9,7 @@ import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
+import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
 /// Profile and app settings (spec 4.2).
@@ -63,23 +64,15 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: SageSpace.gutter,
-              vertical: SageSpace.sm,
-            ),
-            child: LabelledField(
-              label: tr('settings.language'),
-              child: SegmentedChoice<Locale>(
-                values: const <Locale>[AppLocales.en, AppLocales.ru],
-                selected: context.locale == AppLocales.ru
-                    ? AppLocales.ru
-                    : AppLocales.en,
-                labelOf: (Locale locale) =>
-                    tr('language.${locale.languageCode}'),
-                onChanged: (Locale locale) => context.setLocale(locale),
-              ),
-            ),
+          // A row and a sheet rather than a segmented control: the control
+          // divides its width by the number of options, which stops working
+          // the moment there are more than about three languages.
+          ListTile(
+            leading: const Icon(Icons.translate_outlined),
+            title: Text(tr('settings.language')),
+            subtitle: Text(AppLocales.resolve(context.locale).name),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => showLanguagePicker(context),
           ),
           const SizedBox(height: SageSpace.md),
           _SectionLabel(tr('settings.data')),
