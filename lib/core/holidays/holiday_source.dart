@@ -6,10 +6,14 @@ import 'package:sielto/domain/value/calendar_date.dart';
 
 /// The public holidays shipped inside the app (spec 5.1.1).
 ///
-/// Twenty countries, two years, taken from the same source the network path
+/// Twenty countries, 2026-2031, taken from the same source the network path
 /// uses. It exists so the base case works with no network and no API at all:
 /// a user who declines the download still gets correct windows for their
 /// country until the bundle runs out of years.
+///
+/// The span must stay ahead of `recurrenceHorizonMonths` (24), or the app
+/// projects payments into years it has no holiday data for. Regenerate with
+/// `tools/fetch_holidays.py`.
 ///
 /// Regional days are deliberately absent. A holiday observed in one federal
 /// state must not shift a national pay date, so only entries the source marks

@@ -189,7 +189,7 @@
   },
   {
     "code": "CW",
-    "name": "Curaçao"
+    "name": "Cura\u00e7ao"
   },
   {
     "code": "CY",
@@ -601,7 +601,7 @@
   },
   {
     "code": "BL",
-    "name": "Saint Barthélemy"
+    "name": "Saint Barth\u00e9lemy"
   },
   {
     "code": "SH",
@@ -717,7 +717,7 @@
   },
   {
     "code": "ST",
-    "name": "São Tomé and Príncipe"
+    "name": "S\u00e3o Tom\u00e9 and Pr\u00edncipe"
   },
   {
     "code": "TZ",
@@ -753,7 +753,7 @@
   },
   {
     "code": "TR",
-    "name": "Türkiye"
+    "name": "T\u00fcrkiye"
   },
   {
     "code": "UG",
@@ -813,6 +813,6 @@
   },
   {
     "code": "AX",
-    "name": "Åland Islands"
+    "name": "\u00c5land Islands"
   }
 ]
