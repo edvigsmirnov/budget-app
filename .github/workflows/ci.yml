@@ -136,7 +136,7 @@ jobs:
           if-no-files-found: error
 
   linux:
-    name: Linux AppImage
+    name: Linux packages
     needs: analyze
     runs-on: ubuntu-latest
     env:
@@ -149,9 +149,11 @@ jobs:
         run: |
           sudo apt-get update
           # libsecret is flutter_secure_storage_linux's: it keeps the envelope A
-          # wrapping key in the GNOME keyring.
-          sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev
+          # wrapping key in the GNOME keyring. g++ rather than libstdc++-N-dev:
+          # the meta-package tracks the runner image's GCC, which a pinned N
+          # does not. rpm provides rpmbuild.
+          sudo apt-get install -y clang cmake ninja-build pkg-config g++ \
+            libgtk-3-dev liblzma-dev libsecret-1-dev rpm
 
       - uses: subosito/flutter-action@v2
         with:
@@ -164,40 +166,40 @@ jobs:
           flutter build linux --release \
             --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
 
-      - name: Package AppImage
+      - name: Fetch appimagetool
         run: |
           set -euo pipefail
-          APPDIR=build/AppDir
-          mkdir -p "$APPDIR/usr/bin"
-          cp -r build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
+          curl -fsSL -o /usr/local/bin/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          sudo chmod +x /usr/local/bin/appimagetool
 
-          cat > "$APPDIR/sielto.desktop" <<'DESKTOP'
-          [Desktop Entry]
-          Type=Application
-          Name=Sielto
-          Exec=sielto
-          Icon=sielto
-          Categories=Office;Finance;
-          DESKTOP
+      # deb, rpm, tar.gz and AppImage from the one release bundle. The script is
+      # the same one used locally, so a packaging break reproduces off CI.
+      - name: Package
+        run: tools/package_linux.sh "$BUILD_NAME" "$BUILD_NUMBER"
 
-          # appimagetool requires an icon next to the .desktop file.
-          cp linux/runner/resources/sielto.png "$APPDIR/sielto.png"
-
-          cat > "$APPDIR/AppRun" <<'APPRUN'
-          #!/bin/sh
-          HERE="$(dirname "$(readlink -f "$0")")"
-          exec "$HERE/usr/bin/sielto" "$@"
-          APPRUN
-          chmod +x "$APPDIR/AppRun"
-
-          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool-x86_64.AppImage
-          # --appimage-extract-and-run: runners have no FUSE to mount the tool.
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
-            "$APPDIR" "sielto-app-$BUILD_NAME+$BUILD_NUMBER-x86_64.AppImage"
+      # One step per format: archive: false takes the file's own name, and that
+      # only resolves unambiguously for a single file.
+      - uses: actions/upload-artifact@v7
+        with:
+          path: build/packages/sielto-app_*_amd64.deb
+          archive: false
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v7
         with:
-          path: sielto-app-*.AppImage
+          path: build/packages/sielto-app-*.x86_64.rpm
+          archive: false
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          path: build/packages/sielto-app-*-linux-x64.tar.gz
+          archive: false
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          path: build/packages/sielto-app-*.AppImage
           archive: false
           if-no-files-found: error

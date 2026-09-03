@@ -45,6 +45,21 @@ flutter build linux --release
 On Windows, enable Developer Mode first — Flutter needs it to create the plugin
 symlinks, and every build fails without it.
 
+### Linux packages
+
+Releases carry a `.deb`, an `.rpm`, a `.tar.gz` and an AppImage. To build them
+from a release bundle:
+
+```sh
+flutter build linux --release
+tools/package_linux.sh 0.5.0 1
+```
+
+Needs `dpkg-deb` and `tar`; `rpmbuild` and `appimagetool` are optional and
+their formats are skipped when absent. At runtime the app needs GTK 3 and
+libsecret — libsecret holds the database key in the desktop keyring, so the app
+cannot start without it.
+
 ## License
 
 Source-Available Non-Commercial License. See [LICENSE](LICENSE) for full terms.
