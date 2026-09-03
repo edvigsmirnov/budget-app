@@ -50,6 +50,7 @@ app.*.map.json
 # Native assets downloaded by the sqlite3 hook.
 /build/native_assets/
 
-# Private working documents: the specification and the build plan are not
-# published. They stay on disk so the app can be built against them.
 /docs/
+/CLAUDE.md
+/.claude/settings.local.json
+/.claude/sielto_design/
