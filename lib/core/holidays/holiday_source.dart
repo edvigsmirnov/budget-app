@@ -23,14 +23,36 @@ class HolidayBundle {
 
   static const String _dir = 'assets/holidays';
 
+  /// The country codes the bundle ships, from `index.json`.
+  ///
+  /// Consulted before a country file is opened. `countries.json` offers every
+  /// country the source knows — ten times what is bundled — so a miss is the
+  /// normal case, not an error, and asking the manifest keeps it out of the
+  /// exception path.
+  Future<Set<String>> bundledCodes() async {
+    final Object? parsed = jsonDecode(
+      await rootBundle.loadString('$_dir/index.json'),
+    );
+    if (parsed is! List<dynamic>) return const <String>{};
+    return <String>{
+      for (final Object? code in parsed)
+        if (code is String) code.toUpperCase(),
+    };
+  }
+
   /// The dates bundled for [countryCode] in [year], or null when the bundle
   /// covers neither. Null is the signal to try the network.
   Future<List<CalendarDate>?> datesFor(String countryCode, int year) async {
     final String code = countryCode.toUpperCase();
+    if (!(await bundledCodes()).contains(code)) return null;
+
     final String raw;
     try {
       raw = await rootBundle.loadString('$_dir/$code.json');
-    } on Exception {
+    } on Object {
+      // A missing asset throws FlutterError, which is an Error and not an
+      // Exception — `on Exception` let it escape, and choosing any of the
+      // countries without bundled data failed the whole calendar resolution.
       return null;
     }
 
