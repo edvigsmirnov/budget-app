@@ -25,6 +25,9 @@ Future<void> main() async {
   // Before the first frame: an unreadable database is a screen, not a crash.
   final Startup startup = await openDatabase();
 
+  // BudgetAppRoot.build returns the ProviderScope; the rule does not see
+  // through a custom root widget.
+  // ignore: riverpod_lint/missing_provider_scope
   runApp(BudgetAppRoot(startup: startup, settings: settings));
 }
 
