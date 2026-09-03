@@ -13,6 +13,14 @@ import 'package:sielto/features/settings/holidays_page.dart';
 
 enum _QuickAdd { payment, income, nonWorkingDay }
 
+/// One item's height, pinned rather than left to default, and the menu's own
+/// vertical padding. `showMenu` has to be told where the bubble's top goes
+/// before the bubble is laid out, so its height has to be arithmetic — see
+/// [quickAddAnchor].
+@visibleForTesting
+const double quickAddItemHeight = kMinInteractiveDimension;
+const double _menuVerticalPadding = 16;
+
 /// The FAB menu (spec 6.5).
 ///
 /// A bubble beside the button rather than a sheet over the list: three short
@@ -28,9 +36,10 @@ Future<void> showQuickAddMenu(
   required CalendarDate today,
   required GlobalKey anchorKey,
 }) async {
+  final List<PopupMenuEntry<_QuickAdd>> items = _quickAddItems(ref);
   final _QuickAdd? choice = await showMenu<_QuickAdd>(
     context: context,
-    position: _anchorOn(context, anchorKey),
+    position: quickAddAnchor(context, anchorKey, itemCount: items.length),
     color: context.sage.card,
     // Material's default is a half-second grow from the top of the screen. The
     // menu belongs to the button under it, so it opens from there and it opens
@@ -43,33 +52,7 @@ Future<void> showQuickAddMenu(
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(SageRadius.card),
     ),
-    items: <PopupMenuEntry<_QuickAdd>>[
-      PopupMenuItem<_QuickAdd>(
-        value: _QuickAdd.payment,
-        child: _MenuLine(
-          icon: Icons.remove_circle_outline,
-          label: tr('payment.add'),
-        ),
-      ),
-      PopupMenuItem<_QuickAdd>(
-        value: _QuickAdd.income,
-        child: _MenuLine(
-          icon: Icons.add_circle_outline,
-          // Same record, different meaning: in Budget mode money arriving is
-          // not income for a period, it is a payment into the fund (spec 4.8).
-          label: ref.space.budgetMode == BudgetMode.budget
-              ? tr('budget.topUp')
-              : tr('income.add'),
-        ),
-      ),
-      PopupMenuItem<_QuickAdd>(
-        value: _QuickAdd.nonWorkingDay,
-        child: _MenuLine(
-          icon: Icons.event_busy_outlined,
-          label: tr('holidays.markDay'),
-        ),
-      ),
-    ],
+    items: items,
   );
   if (choice == null || !context.mounted) return;
 
@@ -83,13 +66,56 @@ Future<void> showQuickAddMenu(
   }
 }
 
-/// The rectangle a popup opens from: the strip just above the anchor, in
-/// overlay coordinates.
+/// The three quick-add items, built once so [quickAddAnchor] can count them.
+List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
+    <PopupMenuEntry<_QuickAdd>>[
+      PopupMenuItem<_QuickAdd>(
+        value: _QuickAdd.payment,
+        height: quickAddItemHeight,
+        child: _MenuLine(
+          icon: Icons.remove_circle_outline,
+          label: tr('payment.add'),
+        ),
+      ),
+      PopupMenuItem<_QuickAdd>(
+        value: _QuickAdd.income,
+        height: quickAddItemHeight,
+        child: _MenuLine(
+          icon: Icons.add_circle_outline,
+          // Same record, different meaning: in Budget mode money arriving is
+          // not income for a period, it is a payment into the fund (spec 4.8).
+          label: ref.space.budgetMode == BudgetMode.budget
+              ? tr('budget.topUp')
+              : tr('income.add'),
+        ),
+      ),
+      PopupMenuItem<_QuickAdd>(
+        value: _QuickAdd.nonWorkingDay,
+        height: quickAddItemHeight,
+        child: _MenuLine(
+          icon: Icons.event_busy_outlined,
+          label: tr('holidays.markDay'),
+        ),
+      ),
+    ];
+
+/// Where the bubble opens: the anchor's column, with the top edge set to where
+/// the bubble's own top has to land.
 ///
-/// Anchoring on the button's own bounds let Material choose to grow downwards
-/// off the bottom of the screen and then correct itself. Naming the space above
-/// the button as the target means it only ever grows up, out of the button.
-RelativeRect _anchorOn(BuildContext context, GlobalKey anchorKey) {
+/// `showMenu` puts the menu's top at `position.top` and never reads
+/// `position.bottom` when placing it vertically — only `left` and `right`
+/// decide which way it grows sideways. Passing 0 as the top therefore pinned
+/// the bubble to the top of the screen instead of opening it above the button.
+///
+/// The height cannot be measured before layout, so it is counted from the
+/// items. A text scale large enough to stretch a row past [quickAddItemHeight]
+/// only lowers the bubble; `showMenu` keeps it on screen either way.
+@visibleForTesting
+RelativeRect quickAddAnchor(
+  BuildContext context,
+  GlobalKey anchorKey, {
+  required int itemCount,
+}) {
   final RenderBox overlay =
       Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
   final RenderBox? box =
@@ -101,11 +127,14 @@ RelativeRect _anchorOn(BuildContext context, GlobalKey anchorKey) {
     box.size.bottomRight(Offset.zero),
     ancestor: overlay,
   );
+  final double menuHeight =
+      itemCount * quickAddItemHeight + _menuVerticalPadding;
+
   return RelativeRect.fromLTRB(
     topLeft.dx,
-    0,
+    topLeft.dy - menuHeight - SageSpace.sm,
     overlay.size.width - bottomRight.dx,
-    overlay.size.height - topLeft.dy + SageSpace.sm,
+    overlay.size.height - bottomRight.dy,
   );
 }
 
