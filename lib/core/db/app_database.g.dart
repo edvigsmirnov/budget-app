@@ -418,21 +418,21 @@ class Space extends DataClass implements Insertable<Space> {
   /// Overrides the global default when resolving holidays (spec 5.1.1).
   final String? countryCode;
 
-  /// One "today" for every member, regardless of where they are
+  /// One 'today' for every member, regardless of where they are
   /// (plan section 2, invariant 7).
   final String timezone;
 
   /// Frozen after the first record (spec 9.2).
   final String currencyCode;
 
-  /// 0 disables invites. Null is reserved for "no limit" and is written by a
+  /// 0 disables invites. Null is reserved for 'no limit' and is written by a
   /// separate UPDATE rather than stored as 0 (spec 3.4).
   final int? maxMembers;
 
   /// Read-only local archive. Never uploaded.
   final bool isArchived;
 
-  /// Flow's "money I have now" (spec 4.6). Budget uses budget_target instead.
+  /// Flow's 'money I have now' (spec 4.6). Budget uses budget_target instead.
   final Decimal? manualBalance;
   final DateTime? manualBalanceUpdatedAt;
 
@@ -1558,7 +1558,7 @@ class MemberLocalLabel extends DataClass
   final String? lastModifiedBy;
 
   /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local "last modified"; there is no separate updated_at.
+  /// the local 'last modified'; there is no separate updated_at.
   final DateTime clientEditedAt;
 
   /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
@@ -2148,7 +2148,7 @@ class UserProfile extends DataClass implements Insertable<UserProfile> {
   final String? lastModifiedBy;
 
   /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local "last modified"; there is no separate updated_at.
+  /// the local 'last modified'; there is no separate updated_at.
   final DateTime clientEditedAt;
 
   /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
@@ -2784,7 +2784,7 @@ class Category extends DataClass implements Insertable<Category> {
   final String? lastModifiedBy;
 
   /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local "last modified"; there is no separate updated_at.
+  /// the local 'last modified'; there is no separate updated_at.
   final DateTime clientEditedAt;
 
   /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
@@ -3745,7 +3745,7 @@ class BudgetPeriod extends DataClass implements Insertable<BudgetPeriod> {
   final String? lastModifiedBy;
 
   /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local "last modified"; there is no separate updated_at.
+  /// the local 'last modified'; there is no separate updated_at.
   final DateTime clientEditedAt;
 
   /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
@@ -5013,7 +5013,7 @@ class IncomeRecurrenceRule extends DataClass
   final String? lastModifiedBy;
 
   /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local "last modified"; there is no separate updated_at.
+  /// the local 'last modified'; there is no separate updated_at.
   final DateTime clientEditedAt;
 
   /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
@@ -6182,7 +6182,7 @@ class Income extends DataClass implements Insertable<Income> {
   final String? lastModifiedBy;
 
   /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local "last modified"; there is no separate updated_at.
+  /// the local 'last modified'; there is no separate updated_at.
   final DateTime clientEditedAt;
 
   /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
@@ -7260,7 +7260,7 @@ class Payment extends DataClass implements Insertable<Payment> {
   final String? lastModifiedBy;
 
   /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local "last modified"; there is no separate updated_at.
+  /// the local 'last modified'; there is no separate updated_at.
   final DateTime clientEditedAt;
 
   /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
@@ -9617,8 +9617,10 @@ class $$SpacesTableTableManager
               ),
           withReferenceMapper: (p0) => p0
               .map(
-                (e) =>
-                    (e.readTable(table), $$SpacesTableReferences(db, table, e)),
+                (e) => (
+                  e.readTable<$SpacesTable, Space>(table),
+                  $$SpacesTableReferences(db, table, e),
+                ),
               )
               .toList(),
           prefetchHooksCallback:
@@ -10029,7 +10031,7 @@ class $$SpaceMembersTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$SpaceMembersTable, SpaceMember>(table),
                   $$SpaceMembersTableReferences(db, table, e),
                 ),
               )
@@ -10467,7 +10469,7 @@ class $$MemberLocalLabelsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$MemberLocalLabelsTable, MemberLocalLabel>(table),
                   $$MemberLocalLabelsTableReferences(db, table, e),
                 ),
               )
@@ -10753,7 +10755,16 @@ class $$UserProfilesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$UserProfilesTable, UserProfile>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UserProfilesTable,
+                    UserProfile
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -11263,7 +11274,7 @@ class $$CategoriesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$CategoriesTable, Category>(table),
                   $$CategoriesTableReferences(db, table, e),
                 ),
               )
@@ -12070,7 +12081,7 @@ class $$BudgetPeriodsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$BudgetPeriodsTable, BudgetPeriod>(table),
                   $$BudgetPeriodsTableReferences(db, table, e),
                 ),
               )
@@ -12844,7 +12855,10 @@ class $$IncomeRecurrenceRulesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<
+                    $IncomeRecurrenceRulesTable,
+                    IncomeRecurrenceRule
+                  >(table),
                   $$IncomeRecurrenceRulesTableReferences(db, table, e),
                 ),
               )
@@ -13582,7 +13596,7 @@ class $$IncomesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$IncomesTable, Income>(table),
                   $$IncomesTableReferences(db, table, e),
                 ),
               )
@@ -14365,7 +14379,7 @@ class $$PaymentsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PaymentsTable, Payment>(table),
                   $$PaymentsTableReferences(db, table, e),
                 ),
               )
@@ -14634,7 +14648,16 @@ class $$HolidayCacheTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$HolidayCacheTable, HolidayCacheData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $HolidayCacheTable,
+                    HolidayCacheData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -14849,7 +14872,18 @@ class $$CustomNonWorkingDaysTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$CustomNonWorkingDaysTable, CustomNonWorkingDay>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CustomNonWorkingDaysTable,
+                    CustomNonWorkingDay
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
